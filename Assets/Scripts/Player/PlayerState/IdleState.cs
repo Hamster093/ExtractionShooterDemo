@@ -11,15 +11,14 @@ using UnityEngine.UI;
 
 internal class IdleState : BaseState
 {
-    public IdleState(PlayerController player, PlayerAnimatorDriver ani) : base(player, ani)
+    public IdleState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
     {
-
     }
+
     public override void Enter()
     {
         base.Enter();
-        Debug.Log("进入 Idle 状态");
-        _animDriver.SetMoveState(false,true);
+        _animDriver.SetMoveState(_config.BLEND_IDLE, true);
         _player._rb.linearVelocity = Vector3.zero;
     }
     protected override void OnTick(float deltaTime)

@@ -8,9 +8,8 @@
 
 internal class AttackState : BaseState
 {
-    public AttackState(PlayerController player, PlayerAnimatorDriver ani) : base(player, ani)
+    public AttackState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
     {
-
     }
 
     public override void Enter()

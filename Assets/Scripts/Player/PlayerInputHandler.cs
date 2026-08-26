@@ -43,8 +43,24 @@ public class PlayerInputHandler : MonoBehaviour
     /// 松开瞬间（用来停止连射）
     /// </summary>
     public event Action OnAttackCanceled;
-
+    /// <summary>
+    /// 交互
+    /// </summary>
     public event Action OnInteract;
+
+    /// <summary>
+    /// 翻滚触发
+    /// </summary>
+    public event Action OnRollTriggered;
+    /// <summary>
+    /// 冲刺开始
+    /// </summary>
+    public event Action OnSprintStarted;
+    /// <summary>
+    /// 冲刺结束
+    /// </summary>
+    public event Action OnSprintEnded;
+
     #endregion
 
     /// <summary>
@@ -57,6 +73,25 @@ public class PlayerInputHandler : MonoBehaviour
     private Coroutine _attackCoroutine;
     [Header("连射设置")]
     [SerializeField][Tooltip("连射间隔")] private float _attackRate = 0.1f;
+
+    #region 冲刺/翻滚判定
+    [Header("冲刺/翻滚的判定间隔")]
+    [SerializeField] private float _tapWindow = 0.2f; // 超过这个时间判定为长按
+
+    /// <summary>
+    /// 按下的开始时间
+    /// </summary>
+    private float _pressTime;
+    /// <summary>
+    /// 按下状态
+    /// </summary>
+    private bool _isPressed;
+    /// <summary>
+    /// 是否已经处理
+    /// </summary>
+    private bool _actionResolved;
+    #endregion
+
     /// <summary>
     /// 主摄像机
     /// </summary>
@@ -65,6 +100,10 @@ public class PlayerInputHandler : MonoBehaviour
     /// 最后瞄准位置
     /// </summary>
     private Vector3 _lastAimTarget;
+    /// <summary>
+    /// 视角跟随开关
+    /// </summary>
+    public bool IsAimFollowEnabled = true;
 
     private void Awake()
     {
@@ -105,16 +144,65 @@ public class PlayerInputHandler : MonoBehaviour
 
     private void Update()
     {
-        // 读取鼠标屏幕位置
-        Vector2 mouseScreen = Mouse.current.position.ReadValue();
-        Vector3 worldTarget = GetWorldPointOnGround(mouseScreen);
-        //待机检测
-        if (worldTarget != _lastAimTarget)
+            #region 玩家视角跟随鼠标
+        if (IsAimFollowEnabled)
         {
-            _lastAimTarget = worldTarget;
-            OnAimTarget?.Invoke(worldTarget);
+            Vector2 mouseScreen = Mouse.current.position.ReadValue();
+            Vector3 worldTarget = GetWorldPointOnGround(mouseScreen);
+            //待机检测
+            //if (worldTarget != _lastAimTarget)
+            {
+                _lastAimTarget = worldTarget;
+                OnAimTarget?.Invoke(worldTarget);
+            }
+        }
+            #endregion
+
+
+        #region 判断翻滚还是冲刺
+        //判断当前是否有按下
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
+
+        bool sDown = keyboard.leftShiftKey.wasPressedThisFrame;  //按下
+        bool sUp = keyboard.leftShiftKey.wasReleasedThisFrame;   //松开
+        bool sHeld = keyboard.leftShiftKey.isPressed;            //按住
+
+        if (sDown)
+        {
+            _pressTime = Time.time;
+            _isPressed = true;
+            _actionResolved = false;
+        }
+
+        if (_isPressed && !_actionResolved && sHeld)
+        {
+            if (Time.time - _pressTime >= _tapWindow)
+            {
+                //冲刺事件
+                OnSprintStarted?.Invoke();
+                _actionResolved = true;
+            }
+        }
+
+        if (sUp)
+        {
+            if (!_actionResolved)
+            {
+                //触发翻滚事件
+                OnRollTriggered?.Invoke();
+            }
+            else
+            {
+                //冲刺结束事件
+                OnSprintEnded?.Invoke();
+            }
+            _isPressed = false;
+            _actionResolved = false;
         }
     }
+    #endregion
+
     /// <summary>
     /// 将屏幕坐标转换为世界坐标
     /// </summary>
@@ -153,4 +241,5 @@ public class PlayerInputHandler : MonoBehaviour
         if (_attackCoroutine != null)
             StopCoroutine(_attackCoroutine);
     }
+
 }

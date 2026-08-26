@@ -6,19 +6,12 @@
 	功能：移动状态
 *****************************************************/
 
-
-using UnityEngine.InputSystem.XR;
+using UnityEngine;
 
 internal class MoveState : BaseState
 {
-    /// <summary>
-    /// 动画驱动器
-    /// </summary>
-    
-
-    public MoveState(PlayerController player, PlayerAnimatorDriver ani) : base(player,ani)
+    public MoveState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
     {
-        
     }
 
     public override void Enter()
@@ -32,8 +25,13 @@ internal class MoveState : BaseState
         {
             _player._stateMachine.ChangeState<IdleState>();
         }
+
+        float currentSpeed = _config.walkSpeed;
+        Vector3 horizontalVelocity = _player._moveDirection * currentSpeed;
+        _player._rb.linearVelocity = new Vector3(horizontalVelocity.x, _player._rb.linearVelocity.y, horizontalVelocity.z);
+
         bool hasMoveInput = _player._moveDirection.sqrMagnitude > 0.01f;
-        _animDriver.SetMoveState(hasMoveInput);
+        _animDriver.SetMoveState(_config.BLEND_WALK);
     }
     public override void Exit()
     {

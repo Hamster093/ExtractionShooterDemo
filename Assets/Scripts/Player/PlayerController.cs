@@ -13,9 +13,10 @@ public class PlayerController : MonoBehaviour
 {
     [Header("引用")]
     [SerializeField] private PlayerInputHandler _inputHandler;
-    [SerializeField] private PlayerMovementConfig _config;   // 配置组件\
+    [SerializeField] private PlayerMovementConfig _config;     // 配置组件
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
+    public StateMachine _stateMachine;
 
     // 缓存输入
     public Vector3 _moveDirection;  //移动方向
@@ -25,7 +26,6 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// 角色状态
     /// </summary>
-    public StateMachine _stateMachine;
 
 
     private void Awake()
@@ -40,9 +40,11 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("未找到 PlayerMovementConfig，将使用默认值。");
 
         // 注册状态
-        _stateMachine.RegisterState(new IdleState(this, _animDriver));
-        _stateMachine.RegisterState(new MoveState(this, _animDriver));
-        _stateMachine.RegisterState(new JumpState(this, _animDriver));
+        _stateMachine.RegisterState(new IdleState(this, _animDriver,_config));
+        _stateMachine.RegisterState(new MoveState(this, _animDriver, _config));
+        _stateMachine.RegisterState(new JumpState(this, _animDriver, _config));
+        _stateMachine.RegisterState(new RollState(this, _animDriver, _config));
+        _stateMachine.RegisterState(new SprintState(this, _animDriver, _config));
 
         // 设置初始状态
         _stateMachine.ChangeState<IdleState>();
@@ -59,13 +61,26 @@ public class PlayerController : MonoBehaviour
         _inputHandler.OnSprintChanged += HandleSprint;
         _inputHandler.OnJumpTriggered += HandleJump;
         _inputHandler.OnAimTarget += PlayerAt;
+
+        _inputHandler.OnRollTriggered += HandleRoll;
+        _inputHandler.OnSprintStarted += HandleSprintStart;
+        _inputHandler.OnSprintEnded += HandleSprintEnd;
     }
 
     private void OnDisable()
     {
         // 取消订阅
         if (_inputHandler != null)
+        {
+            _inputHandler.OnMove -= HandleMove;
+            _inputHandler.OnSprintChanged -= HandleSprint;
             _inputHandler.OnJumpTriggered -= HandleJump;
+            _inputHandler.OnAimTarget -= PlayerAt;
+
+            _inputHandler.OnRollTriggered -= HandleRoll;
+            _inputHandler.OnSprintStarted -= HandleSprintStart;
+            _inputHandler.OnSprintEnded -= HandleSprintEnd;
+        }
     }
 
     private void FixedUpdate()
@@ -73,26 +88,17 @@ public class PlayerController : MonoBehaviour
         if (_rb == null) return;
 
         //状态机
-        _stateMachine.Tick(Time.deltaTime);
-        Debug.Log(_stateMachine.CurrentState.ToString());
+        _stateMachine.Tick(Time.fixedDeltaTime);
+        Debug.Log("当前状态是" + _stateMachine.CurrentState.ToString());
 
-        //计算目标速度
-        float currentSpeed = _isSprinting ? _config.walkSpeed * _config.sprintMultiplier : _config.walkSpeed;
-        Vector3 targetVelocity = _moveDirection * currentSpeed;
-        if (currentSpeed > 0.1f)
-        {
-            
-        }
 
         // 保持当前垂直速度，叠加重力
         float newVertical = _rb.linearVelocity.y + _config.gravity * Time.fixedDeltaTime;
         // 限制最大下落速度
         if (newVertical < -50f) newVertical = -50f;
-        targetVelocity.y = newVertical;
 
         //写入刚体速度
-        _rb.linearVelocity = targetVelocity;
-
+        _rb.linearVelocity = new Vector3(_rb.linearVelocity.x, newVertical, _rb.linearVelocity.z);
 
     }
 
@@ -145,5 +151,40 @@ public class PlayerController : MonoBehaviour
         //    Debug.Log("跳跃执行！");
         //}
     }
+
+    private void HandleRoll()
+    {
+        //todo 在地面中才能翻滚
+        _stateMachine.ChangeState<RollState>();
+    }
+
+    private void HandleSprintStart()
+    {
+        // 只有当前处于 MoveState 时才允许冲刺
+        if (_stateMachine.CurrentState is MoveState)
+        {
+            _stateMachine.ChangeState<SprintState>();
+        }
+    }
+
+    private void HandleSprintEnd()
+    {
+        // 只有当前处于 SprintState 时才响应结束
+        if (_stateMachine.CurrentState is SprintState)
+        {
+            _stateMachine.ChangeState<MoveState>();
+        }
+    }
+
+
     #endregion
+    /// <summary>
+    /// 视角跟随鼠标开关（用于翻滚
+    /// </summary>
+    /// <param name="enable"></param>
+    public void AimFollowEnabled(bool enable)
+    {
+        _inputHandler.IsAimFollowEnabled = enable;
+    }
+
 }

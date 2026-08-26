@@ -16,5 +16,6 @@ public class AnimParams : MonoBehaviour
     public const string JumpTrigger = "Jump";
 
     public const string isSprinting = "IsSprinting";
+    public const string RollTrigger = "Roll";
 
 }

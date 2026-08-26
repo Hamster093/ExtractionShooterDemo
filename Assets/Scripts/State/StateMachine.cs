@@ -11,7 +11,11 @@ using UnityEngine;
 
 public class StateMachine
 {
-    public IState CurrentState { get; private set; }
+    private IState _currentState;
+    private IState _pendingState;
+    private bool _hasPendingTransition;
+
+    public IState CurrentState => _currentState;
 
     private readonly Dictionary<System.Type, IState> _states = new Dictionary<System.Type, IState>();
 
@@ -29,9 +33,9 @@ public class StateMachine
         }
         _states[type] = state;
     }
-    
+
     /// <summary>
-    /// 跳转状态
+    /// 请求切换状态
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public void ChangeState<T>() where T : IState
@@ -46,12 +50,24 @@ public class StateMachine
 
         if (CurrentState != null && CurrentState.GetType() == targetType) return;
 
-        CurrentState?.Exit();
-        CurrentState = newState;
-        CurrentState.Enter();
+        _pendingState = newState;
+        _hasPendingTransition = true;
     }
 
-    public void Tick(float deltaTime) => CurrentState?.Tick(deltaTime);
+    public void Tick(float deltaTime)
+    {
+        // 【第一步】优先处理延迟切换
+        if (_hasPendingTransition)
+        {
+            _currentState?.Exit();
+            _currentState = _pendingState;
+            _pendingState = null;
+            _hasPendingTransition = false;
 
+            _currentState.Enter();
+            return;
+        }
+        _currentState?.Tick(deltaTime);
+    }
 
 }

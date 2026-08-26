@@ -24,7 +24,6 @@ public class PlayerActionHandler : MonoBehaviour
 
     private void Update()
     {
-        Debug.Log("监听中");
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 

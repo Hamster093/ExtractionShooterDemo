@@ -10,10 +10,10 @@ using static UnityEditor.Experimental.GraphView.GraphView;
 
 internal class JumpState : BaseState
 {
-    public JumpState(PlayerController player, PlayerAnimatorDriver ani) : base(player, ani)
+    public JumpState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
     {
-
     }
+
     public override void Enter()
     {
         base.Enter();

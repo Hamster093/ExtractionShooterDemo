@@ -12,18 +12,20 @@ using UnityEngine;
 public class BaseState : IState
 {
     protected readonly PlayerController _player;
-
     protected readonly PlayerAnimatorDriver _animDriver;
+    protected readonly PlayerMovementConfig _config;
+
 
     /// <summary>
     /// 标记该状态是否已经被 Exit
     /// </summary>
     private bool _hasExited;
 
-    protected BaseState(PlayerController player, PlayerAnimatorDriver ani)
+    protected BaseState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config)
     {
         _player = player;
         _animDriver = ani;
+        _config = config;
     }
 
     public virtual void Enter()
