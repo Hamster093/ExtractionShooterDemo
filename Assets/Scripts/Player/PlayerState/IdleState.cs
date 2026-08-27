@@ -18,11 +18,12 @@ internal class IdleState : BaseState
     public override void Enter()
     {
         base.Enter();
-        _animDriver.SetMoveState(_config.BLEND_IDLE, true);
         _player._rb.linearVelocity = Vector3.zero;
     }
     protected override void OnTick(float deltaTime)
     {
+        _animDriver.SetMoveState(_config.BLEND_IDLE);
+
         if (_player._moveDirection.sqrMagnitude > 0.1f)
         {
             if (_player._isSprinting)

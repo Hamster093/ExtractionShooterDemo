@@ -7,6 +7,7 @@
 *****************************************************/
 
 using System;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour 
@@ -16,6 +17,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private PlayerMovementConfig _config;     // 配置组件
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
+    [SerializeField] private WeaponBase _equippedWeapon; //当前武器
+
     public StateMachine _stateMachine;
 
     // 缓存输入
@@ -30,7 +33,6 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
         _stateMachine = new StateMachine();
 
         // 使用自定义重力，禁用物理默认重力
@@ -49,7 +51,15 @@ public class PlayerController : MonoBehaviour
         // 设置初始状态
         _stateMachine.ChangeState<IdleState>();
     }
+    private void Start()
+    {
+        _equippedWeapon.Initialize(_animDriver,this.gameObject);
+    }
 
+    private void Update()
+    {
+        _equippedWeapon?.Tick(Time.deltaTime);
+    }
     private void OnEnable()
     {
         if (_inputHandler == null)
@@ -65,6 +75,7 @@ public class PlayerController : MonoBehaviour
         _inputHandler.OnRollTriggered += HandleRoll;
         _inputHandler.OnSprintStarted += HandleSprintStart;
         _inputHandler.OnSprintEnded += HandleSprintEnd;
+        _inputHandler.OnAttackHeld += HandleAttack;
     }
 
     private void OnDisable()
@@ -80,6 +91,7 @@ public class PlayerController : MonoBehaviour
             _inputHandler.OnRollTriggered -= HandleRoll;
             _inputHandler.OnSprintStarted -= HandleSprintStart;
             _inputHandler.OnSprintEnded -= HandleSprintEnd;
+            _inputHandler.OnAttackHeld -= HandleAttack;
         }
     }
 
@@ -89,8 +101,6 @@ public class PlayerController : MonoBehaviour
 
         //状态机
         _stateMachine.Tick(Time.fixedDeltaTime);
-        Debug.Log("当前状态是" + _stateMachine.CurrentState.ToString());
-
 
         // 保持当前垂直速度，叠加重力
         float newVertical = _rb.linearVelocity.y + _config.gravity * Time.fixedDeltaTime;
@@ -176,6 +186,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void HandleAttack()
+    {
+        if (_stateMachine.CurrentState is IdleState or MoveState or SprintState)
+        {
+            _equippedWeapon?.TryFire(transform.forward);
+        }
+    }
 
     #endregion
     /// <summary>

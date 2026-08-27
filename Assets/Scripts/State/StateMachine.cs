@@ -52,6 +52,7 @@ public class StateMachine
 
         _pendingState = newState;
         _hasPendingTransition = true;
+        Debug.Log("当前切换到状态是：" + targetType.ToString());
     }
 
     public void Tick(float deltaTime)
