@@ -7,6 +7,7 @@
 *****************************************************/
 
 using System;
+using System.Collections;
 using UnityEngine;
 using static UnityEngine.UI.GridLayoutGroup;
 /// <summary>
@@ -17,24 +18,37 @@ public abstract class WeaponBase : MonoBehaviour
 {
     [Tooltip("武器静态配置")]
     [SerializeField] protected WeaponConfig _config;
+    public WeaponConfig Config => _config;
 
-    // === 运行时状态 ===
+    //查询背包内子弹携带量
+    public int ReserveAmmo => PlayerBackpack.Instance?.GetItemCount(_config.ammoType) ?? 0;
+
     protected int _currentAmmo;         //当前弹匣内剩余弹药数
     protected float _fireCooldownTimer; //射击冷却倒计时（秒）
     protected bool _isReloading;        //换弹进行中标记
-    protected float _reloadTimer;       //换弹剩余时间倒计时（秒）
+
+    public int CurrentAmmo => _currentAmmo;
+    public int MaxAmmo => _config.maxAmmo;
+    public bool IsReloading => _isReloading;
 
     //玩家动画驱动器引用
     protected PlayerAnimatorDriver _animDriver;
 
     /// <summary>
     /// 弹药变化事件
+    /// - 参数1: 当前背包内弹药
+    /// - 触发时机: 拾取弹药 填装消耗弹药
+    /// - - 订阅方: UI面板（更新换弹后弹药数字）
+    /// </summary> 
+    public event Action<int> OnReserveAmmoChanged;//身上的子弹（背包/备弹）跟随弹药类型
+    /// <summary>
+    /// 弹药变化事件
     /// - 参数1: 当前弹匣弹药 (_currentAmmo)
     /// - 参数2: 弹匣最大容量 (_config.maxAmmo)
     /// - 触发时机: 射击扣弹后、换弹完成后
-    /// - 订阅方: UI面板（更新弹药数字）
+    /// - 订阅方: UI面板（更新射击后弹药数字）
     /// </summary> 
-    public event Action<int, int> OnAmmoChanged; // 当前弹药, 总弹药
+    public event Action<int, int> OnAmmoChanged; //枪里的子弹（弹匣）跟随武器实例
 
     /// <summary>
     /// 武器持有者
@@ -42,15 +56,35 @@ public abstract class WeaponBase : MonoBehaviour
     /// </summary>
     protected GameObject _owner;
 
+    private Coroutine _reloadCoroutine; // 缓存句柄用于安全中断
+
     /// <summary>
     /// 武器初始化入口
     /// PlayerController 装备武器时主动调用
     /// </summary>
     public virtual void Initialize(PlayerAnimatorDriver animDriver, GameObject owner)
     {
+        OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+        OnReserveAmmoChanged?.Invoke(ReserveAmmo);
+
         _animDriver = animDriver;
         _owner = owner; 
         _currentAmmo = _config.maxAmmo;
+
+        var inv = PlayerBackpack.Instance;
+        // 订阅库存变化，当该弹药类型数量变动时通知UI
+        if (inv != null)
+            inv.OnItemChanged += OnInventoryItemChanged;
+        // 初始化备弹
+        if (inv != null && inv.GetItemCount(_config.ammoType) == 0)
+            inv.SetItem(_config.ammoType, _config.initialReserveAmmo);
+        Debug.Log("初始化9mm备弹数量" + PlayerBackpack.Instance.GetItemCount(_config.ammoType));
+    }
+
+    private void OnDestroy()
+    {
+        if (PlayerBackpack.Instance != null)
+            PlayerBackpack.Instance.OnItemChanged -= OnInventoryItemChanged;
     }
 
     public virtual void Tick(float deltaTime)
@@ -59,15 +93,6 @@ public abstract class WeaponBase : MonoBehaviour
         if (_fireCooldownTimer > 0)
             _fireCooldownTimer -= deltaTime;
 
-        // 2. 处理换弹逻辑
-        if (_isReloading)
-        {
-            _reloadTimer -= deltaTime;
-            if (_reloadTimer <= 0)
-            {
-                FinishReload();
-            }
-        }
     }
 
     /// <summary>
@@ -95,30 +120,74 @@ public abstract class WeaponBase : MonoBehaviour
     /// <summary>
     /// 尝试换弹（状态机在检测到换弹输入时调用）
     /// </summary>
-    public void Reload()
+    public void TryReload()
     {
-        // 已在换弹中 / 弹匣已满
-        if (_isReloading || _currentAmmo == _config.maxAmmo) return;
+        // 已在换弹中 / 弹匣已满//无备弹
+        if (_isReloading || _currentAmmo == _config.maxAmmo|| ReserveAmmo <= 0) return;
 
         _isReloading = true;
-        _reloadTimer = _config.reloadTime;
 
         _animDriver.SetBool("IsReloading", true);
+
+        // 使用协程等待动画播放完毕
+        StartCoroutine(ReloadRoutine());
+    }
+    /// <summary>
+    /// ****Warning 如果后续做切枪系统，需在切枪时检查 _isReloading 并强制中断协程 + 重置 Bool 参数，防止新武器继承换弹状态。
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator ReloadRoutine()
+    {
+        // 等待换弹动画时长
+        yield return new WaitForSeconds(_config.reloadTime);
+
+        if (!_isReloading || this == null || !gameObject.activeInHierarchy)
+            yield break;
+        int needed = _config.maxAmmo - _currentAmmo;
+        //从背包扣减弹药
+        bool consumed = PlayerBackpack.Instance.ConsumeItem(_config.ammoType, needed);
+
+        if (!consumed)
+        {
+            CancelReload();
+            yield break;
+        }
+
+        _currentAmmo += needed;
+
+        // 重置状态
+        _isReloading = false;
+        _reloadCoroutine = null;
+        _animDriver.SetBool("IsReloading", false);
+
+        // 通知UI刷新
+        OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+        OnReserveAmmoChanged?.Invoke(ReserveAmmo);
+    }
+
+    //背包（子弹）库存变化时回调
+    private void OnInventoryItemChanged(string itemId, int newAmount)
+    {
+        if (itemId == _config.ammoType)
+            OnReserveAmmoChanged?.Invoke(newAmount);
     }
 
     /// <summary>
-    /// 换弹完成处理（由 Tick 中的倒计时触发）
+    /// 切枪/死亡/禁用时调用，防止幽灵换弹
     /// </summary>
-    protected virtual void FinishReload()
+    public void CancelReload()
     {
+        if (!_isReloading) return;
+        if (_reloadCoroutine != null)
+        {
+            StopCoroutine(_reloadCoroutine);
+            _reloadCoroutine = null;
+        }
         _isReloading = false;
-        _currentAmmo = _config.maxAmmo;
-
         _animDriver.SetBool("IsReloading", false);
-        //更新订阅事件
-        OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
     }
 
+    private void OnDisable() => CancelReload();
     /// <summary>
     /// 抽象方法：具体武器的射击子类实现
     /// </summary>

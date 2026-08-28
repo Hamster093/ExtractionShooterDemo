@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: M1911_Config
   m_EditorClassIdentifier: 
   weaponName: M1911
-  fireRate: 0.1
   maxAmmo: 11
   reloadTime: 1.5
   damage: 10
+  fireRate: 0.1
+  fireMode: 0
+  ammoType: Ammo_9mm
+  initialReserveAmmo: 90

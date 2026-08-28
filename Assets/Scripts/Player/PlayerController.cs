@@ -53,7 +53,10 @@ public class PlayerController : MonoBehaviour
     }
     private void Start()
     {
+        //手动初始化 未设置拾取武器
         _equippedWeapon.Initialize(_animDriver,this.gameObject);
+        //给ui设置当前武器
+        UIController.Instance?.BindWeapon(_equippedWeapon);
     }
 
     private void Update()
@@ -75,7 +78,9 @@ public class PlayerController : MonoBehaviour
         _inputHandler.OnRollTriggered += HandleRoll;
         _inputHandler.OnSprintStarted += HandleSprintStart;
         _inputHandler.OnSprintEnded += HandleSprintEnd;
-        _inputHandler.OnAttackHeld += HandleAttack;
+        _inputHandler.OnAttackHeld += HandleAttackHeld;
+        _inputHandler.OnAttackStarted += HandleAttackStarted;
+        _inputHandler.OnReloadTriggered += HandleReload;
     }
 
     private void OnDisable()
@@ -91,7 +96,9 @@ public class PlayerController : MonoBehaviour
             _inputHandler.OnRollTriggered -= HandleRoll;
             _inputHandler.OnSprintStarted -= HandleSprintStart;
             _inputHandler.OnSprintEnded -= HandleSprintEnd;
-            _inputHandler.OnAttackHeld -= HandleAttack;
+            _inputHandler.OnAttackHeld -= HandleAttackHeld;
+            _inputHandler.OnAttackStarted -= HandleAttackStarted;
+            _inputHandler.OnReloadTriggered -= HandleReload;
         }
     }
 
@@ -186,12 +193,47 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void HandleAttack()
+    /// <summary>
+    /// 半自动射击：仅在按下瞬间触发一次
+    /// 由 OnAttackStarted 事件驱动
+    /// </summary>
+    private void HandleAttackStarted()
     {
-        if (_stateMachine.CurrentState is IdleState or MoveState or SprintState)
+        if (_equippedWeapon == null) return;
+        //增加这一步校验，防止开火时切枪出现bug
+        if (_equippedWeapon.Config.fireMode != FireMode.SemiAuto) return;
+
+        // 仅允许在待机/移动状态下开火
+        if (_stateMachine.CurrentState is IdleState or MoveState)
         {
-            _equippedWeapon?.TryFire(transform.forward);
+            _equippedWeapon.TryFire(transform.forward);
         }
+    }
+
+    /// <summary>
+    /// 全自动射击：按住期间持续触发
+    /// 由 OnAttackHeld 事件驱动（协程控制频率）
+    /// </summary>
+    private void HandleAttackHeld()
+    {
+        if (_equippedWeapon == null) return;
+        //增加这一步校验，防止开火时切枪出现bug
+        if (_equippedWeapon.Config.fireMode != FireMode.FullAuto) return;
+
+        if (_stateMachine.CurrentState is IdleState or MoveState)
+        {
+            _equippedWeapon.TryFire(transform.forward);
+        }
+    }
+    // <summary>
+    /// 换弹处理
+    /// </summary>
+    private void HandleReload()
+    {
+        // 翻滚/跳跃等状态下不允许换弹
+        if (_stateMachine.CurrentState is not (IdleState or MoveState)) return;
+
+        _equippedWeapon?.TryReload();
     }
 
     #endregion

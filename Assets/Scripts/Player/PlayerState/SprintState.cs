@@ -19,6 +19,7 @@ internal class SprintState : BaseState
     public override void Enter()
     {
         base.Enter();
+        //冲刺目前是在混合树中进行动画表现 暂不需要使用"IsSprinting"控制 该参数后续可能会用于冲刺状态其他动画表现
         _animDriver.SetBool("IsSprinting", true);
 
     }

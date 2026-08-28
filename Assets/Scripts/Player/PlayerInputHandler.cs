@@ -60,7 +60,10 @@ public class PlayerInputHandler : MonoBehaviour
     /// 冲刺结束
     /// </summary>
     public event Action OnSprintEnded;
-
+    /// <summary>
+    /// 换弹触发事件
+    /// </summary>
+    public event Action OnReloadTriggered;
     #endregion
 
     /// <summary>
@@ -140,6 +143,8 @@ public class PlayerInputHandler : MonoBehaviour
         };
         // 交互（按钮，触发一次）
         _playerActions.Player.Interact.performed += _ => OnInteract?.Invoke();
+
+        _playerActions.Player.Reload.performed += ctx => OnReloadTriggered?.Invoke();
     }
 
     private void Update()
