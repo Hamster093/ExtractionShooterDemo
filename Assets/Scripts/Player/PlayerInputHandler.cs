@@ -188,53 +188,7 @@ public class PlayerInputHandler : MonoBehaviour
         }
         #endregion
     }
-    
 
-
-
-    //    #region 判断翻滚还是冲刺
-    //    //判断当前是否有按下
-    //    var keyboard = Keyboard.current;
-    //    if (keyboard == null) return;
-
-    //    bool sDown = keyboard.leftShiftKey.wasPressedThisFrame;  //按下
-    //    bool sUp = keyboard.leftShiftKey.wasReleasedThisFrame;   //松开
-    //    bool sHeld = keyboard.leftShiftKey.isPressed;            //按住
-
-    //    if (sDown)
-    //    {
-    //        _pressTime = Time.time;
-    //        _isPressed = true;
-    //        _actionResolved = false;
-    //    }
-
-    //    if (_isPressed && !_actionResolved && sHeld)
-    //    {
-    //        if (Time.time - _pressTime >= _tapWindow)
-    //        {
-    //            //冲刺事件
-    //            OnSprintStarted?.Invoke();
-    //            _actionResolved = true;
-    //        }
-    //    }
-
-    //    if (sUp)
-    //    {
-    //        if (!_actionResolved)
-    //        {
-    //            //触发翻滚事件
-    //            OnRollTriggered?.Invoke();
-    //        }
-    //        else
-    //        {
-    //            //冲刺结束事件
-    //            OnSprintEnded?.Invoke();
-    //        }
-    //        _isPressed = false;
-    //        _actionResolved = false;
-    //    }
-    //}
-    //#endregion
 
     /// <summary>
     /// 将屏幕坐标转换为世界坐标
