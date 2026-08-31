@@ -12,7 +12,6 @@ using UnityEngine.Pool;
 public class M1911Weapon : WeaponBase
 {
     [Header("=== 弹道配置 ===")]
-    [SerializeField] private Transform _muzzlePoint;
     [SerializeField] private ProjectileBase _bulletPrefab; // 引用子弹预制体
 
     [Header("=== 对象池 ===")]

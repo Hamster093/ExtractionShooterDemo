@@ -121,6 +121,7 @@ Transform:
   - {fileID: 9178650979544442250}
   - {fileID: 1402323021448231638}
   - {fileID: 3451075887171994277}
+  - {fileID: 4375594780454325977}
   m_Father: {fileID: 5457979407251343256}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &5817405891935650017
@@ -206,6 +207,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5457979407251343256}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &4202292669662459922
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4375594780454325977}
+  m_Layer: 0
+  m_Name: Muzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4375594780454325977
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4202292669662459922}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.003, y: 0.0256, z: -0.1607}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5523927586873146978}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5431971803261064044
 GameObject:
@@ -302,6 +334,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5457979407251343256}
+  - component: {fileID: 8780777201944656569}
   m_Layer: 0
   m_Name: M1911
   m_TagString: Untagged
@@ -326,6 +359,23 @@ Transform:
   - {fileID: 5523927586873146978}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 89.04, y: 9.97, z: 0}
+--- !u!114 &8780777201944656569
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5670675412091330196}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f9e6186d7cf51347834df3bb2161afa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _config: {fileID: 11400000, guid: 3abe7dbb075e18e44876e475f2421319, type: 2}
+  _muzzlePoint: {fileID: 4375594780454325977}
+  _bulletPrefab: {fileID: 861461515441176942, guid: 3fe5648ed2ae6424fb210f940b7db1d0, type: 3}
+  _poolDefaultCapacity: 20
+  _poolMaxSize: 100
 --- !u!1 &6050450588094125975
 GameObject:
   m_ObjectHideFlags: 0

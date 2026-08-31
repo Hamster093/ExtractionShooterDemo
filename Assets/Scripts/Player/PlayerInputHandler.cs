@@ -7,7 +7,6 @@
 *****************************************************/
 
 using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -26,7 +25,7 @@ public class PlayerInputHandler : MonoBehaviour
     /// <summary>
     /// 冲刺/翻滚触发事件
     /// </summary>
-    public event Action<bool> OnSprintChanged;
+    public event Action<bool> OnSprintChanged; //仅用与通知表现层
     /// <summary>
     /// 跳跃触发事件
     /// </summary>
@@ -35,10 +34,6 @@ public class PlayerInputHandler : MonoBehaviour
     /// 按下瞬间攻击触发一次
     /// </summary>
     public event Action OnAttackStarted;
-    /// <summary>
-    /// 按住期间持续触发（全自动射击）
-    /// </summary>
-    public event Action OnAttackHeld;
     /// <summary>
     /// 松开瞬间（用来停止连射）
     /// </summary>
@@ -71,11 +66,26 @@ public class PlayerInputHandler : MonoBehaviour
     /// </summary>
     private PlayerControls _playerActions;
     /// <summary>
-    /// 射击的携程
+    /// 主摄像机
     /// </summary>
-    private Coroutine _attackCoroutine;
-    [Header("连射设置")]
-    [SerializeField][Tooltip("连射间隔")] private float _attackRate = 0.1f;
+    private Camera _mainCamera;
+    /// <summary>
+    /// 最后瞄准位置
+    /// </summary>
+    public Vector3 _lastAimTarget;
+    /// <summary>
+    /// 视角跟随开关
+    /// </summary>
+    public bool IsAimFollowEnabled = true;
+
+    /// <summary>
+    /// 武器栏位切换事件，参数为槽位索引 (0-7)
+    /// </summary>
+    public event Action<int> OnSwitchSlot;
+    /// <summary>
+    /// V键切换近战武器
+    /// </summary>
+    public event Action MeleeWeapon;
 
     #region 冲刺/翻滚判定
     [Header("冲刺/翻滚的判定间隔")]
@@ -88,25 +98,14 @@ public class PlayerInputHandler : MonoBehaviour
     /// <summary>
     /// 按下状态
     /// </summary>
-    private bool _isPressed;
+    private bool _isHolding;
     /// <summary>
     /// 是否已经处理
     /// </summary>
     private bool _actionResolved;
     #endregion
 
-    /// <summary>
-    /// 主摄像机
-    /// </summary>
-    private Camera _mainCamera;
-    /// <summary>
-    /// 最后瞄准位置
-    /// </summary>
-    private Vector3 _lastAimTarget;
-    /// <summary>
-    /// 视角跟随开关
-    /// </summary>
-    public bool IsAimFollowEnabled = true;
+    
 
     private void Awake()
     {
@@ -117,39 +116,53 @@ public class PlayerInputHandler : MonoBehaviour
         _playerActions.Player.Move.performed += ctx => OnMove?.Invoke(ctx.ReadValue<Vector2>());
         _playerActions.Player.Move.canceled += ctx => OnMove?.Invoke(Vector2.zero);
 
-        // 绑定冲刺（按住为 true，松开为 false）
-        _playerActions.Player.Sprint.performed += ctx => OnSprintChanged?.Invoke(true);
-        _playerActions.Player.Sprint.canceled += ctx => OnSprintChanged?.Invoke(false);
-
         // 绑定跳跃（触发一次）
         _playerActions.Player.Jump.performed += ctx => OnJumpTriggered?.Invoke();
 
-        // Attack 动作绑定
-        _playerActions.Player.Attack.started += ctx =>
-        {
-            OnAttackStarted?.Invoke();          // 按下瞬间触发
-            //全自动携程                                    
-            if (_attackCoroutine != null) StopCoroutine(_attackCoroutine);
-            _attackCoroutine = StartCoroutine(AttackRoutine());
-        };
-        _playerActions.Player.Attack.canceled += ctx =>
-        {
-            OnAttackCanceled?.Invoke();         // 松开瞬间触发
-            if (_attackCoroutine != null)
-            {
-                StopCoroutine(_attackCoroutine);
-                _attackCoroutine = null;
-            }
-        };
+        // Attack 动作绑定改为纯状态通知
+        _playerActions.Player.Attack.started += _ => OnAttackStarted?.Invoke();
+        _playerActions.Player.Attack.canceled += _ => OnAttackCanceled?.Invoke();
         // 交互（按钮，触发一次）
         _playerActions.Player.Interact.performed += _ => OnInteract?.Invoke();
-
+        // 换弹 
         _playerActions.Player.Reload.performed += ctx => OnReloadTriggered?.Invoke();
+
+        // 冲刺/翻滚
+        _playerActions.Player.Sprint.started += OnSprintPressed;
+        _playerActions.Player.Sprint.canceled += OnSprintReleased;
+
+        // 武器栏位切换 (1-8键)
+        // SwitchSlot 是 Value 动作且绑定按键(KeyControl, float)，不能 ReadValue<int>，
+        // 改为从触发回调的按键名(如 "1"、"2")解析槽位索引
+        _playerActions.Player.SwitchSlot.performed += ctx =>
+        {
+            if (ctx.control != null && int.TryParse(ctx.control.name, out int slotIndex))
+                OnSwitchSlot?.Invoke(slotIndex);
+        };
+
+        _playerActions.Player.MeleeWeapon.performed += _ => MeleeWeapon?.Invoke();
+    }
+    /// <summary>
+    /// 启用输入映射
+    /// </summary>
+    private void OnEnable()
+    {
+        if (_playerActions != null)
+            _playerActions.Enable();
+    }
+
+    /// <summary>
+    /// 禁用输入映射（防止后台继续响应）
+    /// </summary>
+    private void OnDisable()
+    {
+        if (_playerActions != null)
+            _playerActions.Disable();
     }
 
     private void Update()
     {
-            #region 玩家视角跟随鼠标
+        #region 玩家视角跟随鼠标
         if (IsAimFollowEnabled)
         {
             Vector2 mouseScreen = Mouse.current.position.ReadValue();
@@ -161,52 +174,67 @@ public class PlayerInputHandler : MonoBehaviour
                 OnAimTarget?.Invoke(worldTarget);
             }
         }
-            #endregion
-
+        #endregion
 
         #region 判断翻滚还是冲刺
-        //判断当前是否有按下
-        var keyboard = Keyboard.current;
-        if (keyboard == null) return;
-
-        bool sDown = keyboard.leftShiftKey.wasPressedThisFrame;  //按下
-        bool sUp = keyboard.leftShiftKey.wasReleasedThisFrame;   //松开
-        bool sHeld = keyboard.leftShiftKey.isPressed;            //按住
-
-        if (sDown)
-        {
-            _pressTime = Time.time;
-            _isPressed = true;
-            _actionResolved = false;
-        }
-
-        if (_isPressed && !_actionResolved && sHeld)
+        // 判断当前是否有按下
+        if (_isHolding && !_actionResolved)
         {
             if (Time.time - _pressTime >= _tapWindow)
             {
-                //冲刺事件
                 OnSprintStarted?.Invoke();
                 _actionResolved = true;
             }
         }
-
-        if (sUp)
-        {
-            if (!_actionResolved)
-            {
-                //触发翻滚事件
-                OnRollTriggered?.Invoke();
-            }
-            else
-            {
-                //冲刺结束事件
-                OnSprintEnded?.Invoke();
-            }
-            _isPressed = false;
-            _actionResolved = false;
-        }
+        #endregion
     }
-    #endregion
+    
+
+
+
+    //    #region 判断翻滚还是冲刺
+    //    //判断当前是否有按下
+    //    var keyboard = Keyboard.current;
+    //    if (keyboard == null) return;
+
+    //    bool sDown = keyboard.leftShiftKey.wasPressedThisFrame;  //按下
+    //    bool sUp = keyboard.leftShiftKey.wasReleasedThisFrame;   //松开
+    //    bool sHeld = keyboard.leftShiftKey.isPressed;            //按住
+
+    //    if (sDown)
+    //    {
+    //        _pressTime = Time.time;
+    //        _isPressed = true;
+    //        _actionResolved = false;
+    //    }
+
+    //    if (_isPressed && !_actionResolved && sHeld)
+    //    {
+    //        if (Time.time - _pressTime >= _tapWindow)
+    //        {
+    //            //冲刺事件
+    //            OnSprintStarted?.Invoke();
+    //            _actionResolved = true;
+    //        }
+    //    }
+
+    //    if (sUp)
+    //    {
+    //        if (!_actionResolved)
+    //        {
+    //            //触发翻滚事件
+    //            OnRollTriggered?.Invoke();
+    //        }
+    //        else
+    //        {
+    //            //冲刺结束事件
+    //            OnSprintEnded?.Invoke();
+    //        }
+    //        _isPressed = false;
+    //        _actionResolved = false;
+    //    }
+    //}
+    //#endregion
 
     /// <summary>
     /// 将屏幕坐标转换为世界坐标
@@ -225,26 +253,38 @@ public class PlayerInputHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// 攻击协助 实现全自动逻辑
+    /// 按下瞬间：记录时间，重置标记
     /// </summary>
-    /// <returns></returns>
-    private IEnumerator AttackRoutine()
+    private void OnSprintPressed(InputAction.CallbackContext ctx)
     {
-        OnAttackHeld?.Invoke();
+        _pressTime = Time.time;
+        _isHolding = true;
+        _actionResolved = false;
 
-        while (true)
-        {
-            yield return new WaitForSeconds(_attackRate);
-            OnAttackHeld?.Invoke();
-        }
+        // 通知UI层
+        OnSprintChanged?.Invoke(true);
     }
 
-    private void OnEnable() => _playerActions.Enable();
-    private void OnDisable()
+    /// <summary>
+    /// 根据持有时长决定是翻滚还是结束冲刺
+    /// </summary>
+    private void OnSprintReleased(InputAction.CallbackContext ctx)
     {
-        _playerActions.Disable();
-        if (_attackCoroutine != null)
-            StopCoroutine(_attackCoroutine);
+        OnSprintChanged?.Invoke(false);
+
+        if (!_actionResolved)
+        {
+            // 未超过 tapWindow → 短按 → 翻滚
+            OnRollTriggered?.Invoke();
+        }
+        else
+        {
+            // 已超过 tapWindow → 长按后松开 → 冲刺结束
+            OnSprintEnded?.Invoke();
+        }
+
+        _isHolding = false;
+        _actionResolved = false;
     }
 
 }

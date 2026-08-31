@@ -17,6 +17,9 @@ public class UIController : MonoBehaviour
     public static UIController Instance { get; private set; }
 
     [SerializeField] private GameObject crosshair; // 准心UI图片
+    [SerializeField] private GameObject weaponSprit1; // 1号武器选中特效
+    [SerializeField] private GameObject weaponSprit2; // 2号武器选中特效
+    [SerializeField] private GameObject meleeWeapon; // 近战武器选中特效
 
     [Header("弹药UI设置")]
     [SerializeField] private Text ammoText; // 弹药文本
@@ -114,4 +117,22 @@ public class UIController : MonoBehaviour
             ReserveAmmoText.text = "剩余弹药：" + reserve.ToString();
         }
     }
+    /// <summary>
+    /// 武器栏位选中特效开关
+    /// </summary>
+    /// <param name="index"></param>
+    private void SelectedWeaponUI(int index)
+    {
+        weaponSprit1.SetActive(false);
+        weaponSprit2.SetActive(false);
+        meleeWeapon.SetActive(false);
+
+        switch (index)
+        {
+            case 1: weaponSprit1.SetActive(true); break;
+            case 2: weaponSprit2.SetActive(true); break;
+            default: meleeWeapon.SetActive(true); break;
+        }
+    }
 }
+    

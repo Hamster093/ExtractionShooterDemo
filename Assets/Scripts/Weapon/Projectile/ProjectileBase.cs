@@ -9,6 +9,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Pool;
+using static UnityEngine.UI.GridLayoutGroup;
 
 public abstract class ProjectileBase : MonoBehaviour
 {
@@ -30,6 +31,16 @@ public abstract class ProjectileBase : MonoBehaviour
     /// 伤害来源
     /// </summary>
     [NonSerialized] public GameObject Owner;
+
+
+    internal void Initialize(GameObject owner, Vector3 spawnPosition, Vector3 fireDirection, int damage)
+    {
+        Owner = owner;
+        Direction = fireDirection;
+        _damage = damage;
+
+        transform.SetPositionAndRotation(spawnPosition, Quaternion.LookRotation(fireDirection));
+    }
 
     private void OnEnable()
     {

@@ -26,10 +26,8 @@ internal class IdleState : BaseState
 
         if (_player._moveDirection.sqrMagnitude > 0.1f)
         {
-            if (_player._isSprinting)
-                _player._stateMachine.ChangeState<SprintState>();
-            else
-                _player._stateMachine.ChangeState<MoveState>();
+
+            _player._stateMachine.ChangeState<MoveState>();
             return;
         }
 
