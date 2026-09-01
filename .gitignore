@@ -112,3 +112,8 @@ CODELY.md
 screenshots/
 Assets/TJGenerators.meta
 Assets/Resources/paichu.meta
+.codely-cli/settings.json
+.com-unity-codely.json
+CODELY.md
+Assets/TJGenerators.meta
+Assets/TJGenerators/History.meta
