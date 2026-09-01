@@ -9,6 +9,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using static UnityEditor.Progress;
 /// <summary>
 /// 武器系统抽象基类
 /// 职责：管理弹药、冷却、换弹等通用逻辑，并将具体射击行为延迟到子类实现
@@ -21,7 +22,7 @@ public abstract class WeaponBase : MonoBehaviour
     [SerializeField] protected Transform _muzzlePoint;
 
     //查询背包内子弹携带量
-    public int ReserveAmmo => PlayerBackpack.Instance?.GetItemCount(_config.ammoType) ?? 0;
+    public int ReserveAmmo => PlayerBackpack.Instance?.GetItemCount(_config.DefaultAmmo) ?? 0;
 
     // ─── 弹药状态 ───
     protected int _currentAmmo;         //当前弹匣内剩余弹药数
@@ -84,8 +85,8 @@ public abstract class WeaponBase : MonoBehaviour
             {
                 inv.OnItemChanged += OnInventoryItemChanged;
                 ///初始化备弹 后续删掉 todo
-                if (inv.GetItemCount(_config.ammoType) == 0)
-                    inv.SetItem(_config.ammoType, _config.initialReserveAmmo);
+                if (inv.GetItemCount(_config.DefaultAmmo) == 0)
+                    inv.SetItem(_config.DefaultAmmo, _config.initialReserveAmmo);
             }
         }
         else
@@ -244,7 +245,7 @@ public abstract class WeaponBase : MonoBehaviour
         }
         //从背包扣减弹药
         bool consumed = PlayerBackpack.Instance != null
-           && PlayerBackpack.Instance.ConsumeItem(_config.ammoType, actualReload);
+           && PlayerBackpack.Instance.ConsumeItem(_config.DefaultAmmo, actualReload);
 
         if (!consumed)
         {
@@ -282,9 +283,9 @@ public abstract class WeaponBase : MonoBehaviour
 
     #region 背包回调
 
-    private void OnInventoryItemChanged(string itemId, int newAmount)
+    private void OnInventoryItemChanged(int itemid, int newAmount)
     {
-        if (itemId == _config.ammoType)
+        if (itemid == _config.DefaultAmmo)
             OnReserveAmmoChanged?.Invoke(newAmount);
     }
 

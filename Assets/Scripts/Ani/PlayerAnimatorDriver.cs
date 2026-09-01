@@ -25,6 +25,8 @@ public class PlayerAnimatorDriver : MonoBehaviour
     /// 此标志位会被置为 true，阻止 Tick 中的阻尼动画覆盖新状态的设置。
     /// </summary>
     private bool _isTransitioning;
+    //采用懒加载
+    public Animator Animator => _animator != null ? _animator : (_animator = GetComponent<Animator>());
 
     /// <summary>
     /// 标记状态机正在切换（由 StateMachine 调用）。
@@ -38,7 +40,6 @@ public class PlayerAnimatorDriver : MonoBehaviour
 
     private void Awake()
     {
-        _animator = GetComponent<Animator>();
 
         _moveBlendHash = Animator.StringToHash(AnimParams.Blend);
         _sprintBoolHash = Animator.StringToHash(AnimParams.isSprinting);

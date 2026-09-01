@@ -24,7 +24,7 @@ public class WeaponConfig :ScriptableObject
     public FireMode fireMode = FireMode.SemiAuto;
 
     [Header("弹药系统")]
-    public string ammoType = "Ammo_Default";   // 弹药类型ID
+    public int DefaultAmmo;   // 弹药类型ID
     public int initialReserveAmmo = 90;    // 仅用于游戏开始时初始化库存
 
     [Header("全自动专属（仅 FullAuto 生效）")]

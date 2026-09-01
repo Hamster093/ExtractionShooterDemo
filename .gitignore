@@ -106,3 +106,9 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ss]ceneDependencyCache*
 Assets/Resources/paichu/
 Assets/Resources/paichu/
+.codely-cli/settings.json
+.com-unity-codely.json
+CODELY.md
+screenshots/
+Assets/TJGenerators.meta
+Assets/Resources/paichu.meta

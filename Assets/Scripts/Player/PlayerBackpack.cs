@@ -10,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEditor.Progress;
 
 /// <summary>
 /// 玩家库存服务：管理所有可堆叠物品的数量
@@ -18,11 +19,11 @@ public class PlayerBackpack : MonoBehaviour
 {
     public static PlayerBackpack Instance { get; private set; }
 
-    // 物品ID -> 数量 的字典  应提取数据类作为键 todo
-    private Dictionary<string, int> _items = new Dictionary<string, int>();
+    // 物品ID -> 数量 的字典  
+    private Dictionary<int, int> _items = new Dictionary<int, int>();
 
-    // 库存变化事件：物品ID, 新数量 应提取数据类作为键 todo
-    public event Action<string, int> OnItemChanged;
+    // 库存变化事件：物品ID, 新数量 
+    public event Action<int, int> OnItemChanged;
 
     private void Awake()
     {
@@ -35,13 +36,19 @@ public class PlayerBackpack : MonoBehaviour
     /// <summary>
     /// 添加物品
     /// </summary>
-    public bool AddItem(string itemId, int amount, int maxStack = 999)
+    public bool AddItem(int itemId, int amount)
     {
-        _items.TryGetValue(itemId, out int current);
-        int newAmount = Mathf.Min(current + amount, maxStack);
+        var itemData = ItemRegistry.Get(itemId);
+        if (itemData == null)
+        {
+            Debug.LogError($"[Backpack] 未知物品ID: {itemId}");
+            return false;
+        }
 
-        if (newAmount == current) return false; // 已满，未实际增加
-        //更新数量，发送物品变化事件
+        _items.TryGetValue(itemId, out int current);
+        int newAmount = Mathf.Min(current + amount, itemData.maxStack); // ← 从配置表读
+
+        if (newAmount == current) return false;
         _items[itemId] = newAmount;
         OnItemChanged?.Invoke(itemId, newAmount);
         return true;
@@ -50,31 +57,37 @@ public class PlayerBackpack : MonoBehaviour
     /// <summary>
     /// 消耗物品
     /// </summary>
-    public bool ConsumeItem(string itemId, int amount)
+    public bool ConsumeItem(int itemid, int amount)
     {
-        _items.TryGetValue(itemId, out int current);
+        _items.TryGetValue(itemid, out int current);
         if (current < amount) return false;
 
-        _items[itemId] = current - amount;
-        OnItemChanged?.Invoke(itemId, _items[itemId]);
+        int newCount = current - amount;
+
+        if (newCount <= 0)
+            _items.Remove(itemid);
+        else
+            _items[itemid] = newCount;
+
+        OnItemChanged?.Invoke(itemid, _items[itemid]);
         return true;
     }
 
     /// <summary>
     /// 查询物品数量
     /// </summary>
-    public int GetItemCount(string itemId)
+    public int GetItemCount(int itemid)
     {
-        _items.TryGetValue(itemId, out int count);
+        _items.TryGetValue(itemid, out int count);
         return count;
     }
 
     /// <summary>
     /// 初始化某种物品的初始携带量
     /// </summary>
-    public void SetItem(string itemId, int amount)
+    public void SetItem(int itemid, int amount)
     {
-        _items[itemId] = amount;
-        OnItemChanged?.Invoke(itemId, amount);
+        _items[itemid] = amount;
+        OnItemChanged?.Invoke(itemid, amount);
     }
 }

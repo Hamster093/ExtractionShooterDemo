@@ -21,6 +21,13 @@ public class PlayerController : MonoBehaviour
 
     public StateMachine _stateMachine;
 
+    /// <summary>
+    /// 动画参数
+    /// 用于设置持枪状态的动画层权重
+    /// </summary>
+    // HoldGun Layer 在 Animator Controller 中的索引
+    private const int HOLD_GUN_LAYER_INDEX = 1;
+
     // 缓存输入
     public Vector3 _moveDirection;  //移动方向
     public bool _jumpPressed;
@@ -157,6 +164,10 @@ public class PlayerController : MonoBehaviour
 
         _inputHandler.OnSwitchSlot += HandleSwitchSlot;
         _inputHandler.MeleeWeapon += HandMeleeWeapon;
+
+        _weaponSlots.OnHasWeaponChanged += OnHasWeaponChanged;
+        // 初始化时同步持枪动画
+        OnHasWeaponChanged(_weaponSlots.HasAnyWeapon);
     }
 
     private void OnDisable()
@@ -182,6 +193,8 @@ public class PlayerController : MonoBehaviour
                 _weaponSlots.OnSlotChanged -= OnWeaponSlotChanged;
             _inputHandler.OnSwitchSlot -= HandleSwitchSlot;
             _inputHandler.MeleeWeapon -= HandMeleeWeapon;
+
+            _weaponSlots.OnHasWeaponChanged -= OnHasWeaponChanged;
 
 
             // 清理当前武器状态
@@ -337,11 +350,6 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandMeleeWeapon()
     {
-        // TODO: V键的具体逻辑，例如：
-        // - 近战攻击
-        // - 使用物品
-        // - 开关瞄准镜
-        // 翻滚/跳跃等状态下不允许切枪
         if (_stateMachine.CurrentState is RollState or JumpState) return;
 
         SwitchWeaponSlot((int)WeaponSlot.Melee);
@@ -349,10 +357,17 @@ public class PlayerController : MonoBehaviour
     }
 
     #endregion
-        /// <summary>
-        /// 视角跟随鼠标开关（用于翻滚
-        /// </summary>
-        /// <param name="enable"></param>
+
+    private void OnHasWeaponChanged(bool hasWeapon)
+    {
+        float targetWeight = hasWeapon ? 1f : 0f;
+        _animDriver.Animator.SetLayerWeight(HOLD_GUN_LAYER_INDEX, targetWeight);
+    }
+
+    /// <summary>
+    /// 视角跟随鼠标开关（用于翻滚
+    /// </summary>
+    /// <param name="enable"></param>
     public void AimFollowEnabled(bool enable)
     {
         _inputHandler.IsAimFollowEnabled = enable;

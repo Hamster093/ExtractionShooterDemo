@@ -31,11 +31,22 @@ public class PlayerWeaponSlots : MonoBehaviour
     [SerializeField] private WeaponBase[] _weapons = new WeaponBase[SlotCount];
 
     /// <summary>
+    /// 已装备的武器数量（用于UI显示）
+    /// </summary>
+    private int _equippedCount;
+    /// <summary>
     /// 栏位切换事件
     /// - 参数1: 新激活的栏位索引
     /// - 参数2: 新激活的武器实例（可能为null）
     /// </summary>
     public event Action<int, WeaponBase> OnSlotChanged;
+
+    /// <summary>
+    /// 武器持有状态变化事件
+    /// true = 至少有一把武器, false = 全部卸下
+    /// 动画系统订阅此事件来控制层级开关
+    /// </summary>
+    public event Action<bool> OnHasWeaponChanged;
 
     /// <summary>
     /// 当前激活栏位索引
@@ -46,6 +57,21 @@ public class PlayerWeaponSlots : MonoBehaviour
     /// 当前激活栏位的武器实例（只读，可能为null）
     /// </summary>
     public WeaponBase ActiveWeapon => GetWeapon(_activeSlotIndex);
+
+    /// <summary>
+    /// 当前是否持有任何武器
+    /// </summary>
+    public bool HasAnyWeapon => _equippedCount > 0;
+
+    //初始化时同步计数器
+    private void Awake()
+    {
+        _equippedCount = 0;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_weapons[i] != null) _equippedCount++;
+        }
+    }
 
     /// <summary>
     /// 获取指定栏位的武器实例
@@ -66,7 +92,23 @@ public class PlayerWeaponSlots : MonoBehaviour
     public void SetWeapon(int slotIndex, WeaponBase weapon)
     {
         if (slotIndex < 0 || slotIndex >= SlotCount) return;
+
+        var oldWeapon = _weapons[slotIndex];
+        // 防止重复设置同一武器
+        if (oldWeapon == weapon) return;
+
         _weapons[slotIndex] = weapon;
+
+        // 【核心】增量更新计数器，而非遍历
+        if (oldWeapon != null && weapon == null) _equippedCount--;
+        else if (oldWeapon == null && weapon != null) _equippedCount++;
+
+        // 触发武器持有状态变化事件
+        // 没有装备武器/装备一把武器
+        if (_equippedCount == 0 || (_equippedCount == 1 && oldWeapon == null))
+            //传出bool值
+            OnHasWeaponChanged?.Invoke(HasAnyWeapon);
+
 
         // 如果设置的是当前激活栏位，触发事件通知UI等订阅方
         if (slotIndex == _activeSlotIndex)
@@ -99,10 +141,13 @@ public class PlayerWeaponSlots : MonoBehaviour
     /// </summary>
     public void ClearAll()
     {
-        for (int i = 0; i < SlotCount; i++)
-            _weapons[i] = null;
+        bool hadWeapon = _equippedCount > 0;
+        for (int i = 0; i < SlotCount; i++) _weapons[i] = null;
 
+        _equippedCount = 0;
         _activeSlotIndex = 0;
+
+        if (hadWeapon) OnHasWeaponChanged?.Invoke(false);
         OnSlotChanged?.Invoke(0, null);
     }
 }

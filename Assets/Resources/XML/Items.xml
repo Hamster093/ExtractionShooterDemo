@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Items>
+  <Item id="1" itemName="默认弹药" maxStack="90" iconKey="icon_ammo_default" type="Ammo" />
+  <Item id="2" itemName="手枪" maxStack="1" iconKey="icon_pistol" type="Equipment" />
+  <Item id="3" itemName="鸡腿" maxStack="5" iconKey="icon_chicken" type="Consumable" />
+</Items>
