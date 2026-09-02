@@ -6,6 +6,7 @@
 	功能：加载资源管理类
 *****************************************************/
 
+using System.ComponentModel;
 using UnityEngine;
 
 public static class ResourceManager

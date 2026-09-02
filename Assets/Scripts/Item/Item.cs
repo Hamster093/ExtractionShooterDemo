@@ -3,7 +3,7 @@
 	作者：DADI
     邮箱: 1581507659@qq.com
     日期：2026-09-01 15:13:51
-	功能：Nothing
+	功能：物品类
 *****************************************************/
 
 using System.Collections.Generic;
@@ -41,5 +41,21 @@ public enum ItemType
     Equipment,    // 装备（手枪、步枪）
     Ammo,         // 弹药
     Material      // 材料/任务道具
+}
+
+/// <summary>
+/// 运行时物品实例
+/// </summary>
+[System.Serializable]
+public class ItemInstance
+{
+    public int itemID;
+    public int amount;
+
+    // 便捷访问静态数据，避免序列化冗余
+    public ItemData Data => ItemRegistry.Get(itemID);
+
+    public ItemInstance() { }
+    public ItemInstance(int id, int count) { itemID = id; amount = count; }
 }
 

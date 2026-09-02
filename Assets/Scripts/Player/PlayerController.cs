@@ -21,13 +21,6 @@ public class PlayerController : MonoBehaviour
 
     public StateMachine _stateMachine;
 
-    /// <summary>
-    /// 动画参数
-    /// 用于设置持枪状态的动画层权重
-    /// </summary>
-    // HoldGun Layer 在 Animator Controller 中的索引
-    private const int HOLD_GUN_LAYER_INDEX = 1;
-
     // 缓存输入
     public Vector3 _moveDirection;  //移动方向
     public bool _jumpPressed;
@@ -91,7 +84,7 @@ public class PlayerController : MonoBehaviour
         // 3. 如果装备的就是当前激活栏位，额外刷新UI
         if (targetSlot == _weaponSlots.ActiveSlotIndex)
         {
-            UIController.Instance?.BindWeapon(weapon);
+            PlayerEvents.Instance.TriggerWeaponChanged(targetSlot, weapon);
         }
 
         Debug.Log($"[PlayerController] 拾取武器 {weapon.name} 到栏位 {targetSlot}");
@@ -127,10 +120,32 @@ public class PlayerController : MonoBehaviour
             _lastActiveWeapon.CancelReload();
             _lastActiveWeapon.CancelFire();
         }
+        // 解绑旧武器的弹药监听
+        if (_lastActiveWeapon != null)
+        {
+            _lastActiveWeapon.OnAmmoChanged -= HandleAmmoChanged;
+            _lastActiveWeapon.OnReserveAmmoChanged -= HandleReserveAmmoChanged;
+        }
 
         InitializeWeapon(weapon);
-        UIController.Instance?.BindWeapon(weapon);
+        PlayerEvents.Instance.TriggerWeaponChanged(slotIndex, weapon);//武器变更事件
+
+        // 绑定新武器的弹药监听，并立即同步一次初始值
+        if (weapon != null)
+        {
+            weapon.OnAmmoChanged += HandleAmmoChanged;
+            weapon.OnReserveAmmoChanged += HandleReserveAmmoChanged;
+            HandleAmmoChanged(weapon.CurrentAmmo, weapon.MaxAmmo);
+            HandleReserveAmmoChanged(weapon.ReserveAmmo);
+        }
+        else
+        {
+            // 切到空栏位时清零显示
+            PlayerEvents.Instance.TriggerCurrentAmmoChanged(0, 0);
+            PlayerEvents.Instance.TriggerReserveAmmoChanged(0);
+        }
         _lastActiveWeapon = weapon;
+
     }
 
     private void Update()
@@ -170,6 +185,7 @@ public class PlayerController : MonoBehaviour
         OnHasWeaponChanged(_weaponSlots.HasAnyWeapon);
     }
 
+    
     private void OnDisable()
     {
         // 取消订阅
@@ -196,10 +212,11 @@ public class PlayerController : MonoBehaviour
 
             _weaponSlots.OnHasWeaponChanged -= OnHasWeaponChanged;
 
-
             // 清理当前武器状态
             if (_lastActiveWeapon != null)
             {
+                _lastActiveWeapon.OnAmmoChanged -= HandleAmmoChanged;
+                _lastActiveWeapon.OnReserveAmmoChanged -= HandleReserveAmmoChanged;
                 _lastActiveWeapon.CancelReload();
                 _lastActiveWeapon.CancelFire();
                 _lastActiveWeapon = null;
@@ -358,10 +375,15 @@ public class PlayerController : MonoBehaviour
 
     #endregion
 
+    /// <summary>
+    /// 武器状态改变时回调
+    /// </summary>
+    /// <param name="hasWeapon"></param>
     private void OnHasWeaponChanged(bool hasWeapon)
     {
         float targetWeight = hasWeapon ? 1f : 0f;
-        _animDriver.Animator.SetLayerWeight(HOLD_GUN_LAYER_INDEX, targetWeight);
+        _animDriver.Animator.SetLayerWeight(AnimParams.HOLD_GUN_LAYER_INDEX, targetWeight);
+        PlayerEvents.Instance.TriggerHasWeaponChanged(hasWeapon);
     }
 
     /// <summary>
@@ -372,6 +394,14 @@ public class PlayerController : MonoBehaviour
     {
         _inputHandler.IsAimFollowEnabled = enable;
     }
+
+    // 转发事件
+    private void HandleAmmoChanged(int current, int max)
+        => PlayerEvents.Instance.TriggerCurrentAmmoChanged(current, max);
+
+    private void HandleReserveAmmoChanged(int reserve)
+        => PlayerEvents.Instance.TriggerReserveAmmoChanged(reserve);
+
 
 }
 public enum WeaponSlot { Primary = 0, Secondary = 1, Melee = 2 }

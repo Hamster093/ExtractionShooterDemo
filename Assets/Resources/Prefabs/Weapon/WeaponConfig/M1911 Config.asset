@@ -18,7 +18,7 @@ MonoBehaviour:
   damage: 5
   fireRate: 0.2
   fireMode: 0
-  ammoType: Ammo_9mm
+  DefaultAmmo: 1
   initialReserveAmmo: 22
   maxSpread: 3
   spreadPerShot: 0.5

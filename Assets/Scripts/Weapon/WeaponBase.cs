@@ -30,6 +30,7 @@ public abstract class WeaponBase : MonoBehaviour
     private bool _isFireRequested;      //是否请求开火
     private float _nextFireTime;        //开火间隔
     private bool _isInitialized;       // 防止重复初始化
+    private int _lastReserveAmmo;      //上一次的备弹数量
 
     public int CurrentAmmo => _currentAmmo;
     public int MaxAmmo => _config.maxAmmo;
@@ -70,29 +71,31 @@ public abstract class WeaponBase : MonoBehaviour
         _owner = owner;
         _getAimTargetWorldPos = null;
 
-        // ★ 只有首次初始化才设置弹药和订阅背包
+        // 只有首次初始化才设置弹药和订阅背包
         if (!_isInitialized)
         {
             _currentAmmo = _config.maxAmmo;
             _isInitialized = true;
 
             OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+            _lastReserveAmmo = ReserveAmmo;
             OnReserveAmmoChanged?.Invoke(ReserveAmmo);
 
             var inv = PlayerBackpack.Instance;
             // 订阅库存变化，当该弹药类型数量变动时通知UI
             if (inv != null)
             {
-                inv.OnItemChanged += OnInventoryItemChanged;
+                inv.OnSlotChanged += OnInventoryItemChanged;
                 ///初始化备弹 后续删掉 todo
                 if (inv.GetItemCount(_config.DefaultAmmo) == 0)
-                    inv.SetItem(_config.DefaultAmmo, _config.initialReserveAmmo);
+                    inv.AddItem(_config.DefaultAmmo, _config.initialReserveAmmo);
             }
         }
         else
         {
             // 重新装备时，仅通知UI刷新当前真实弹药状态
             OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+            _lastReserveAmmo = ReserveAmmo;
             OnReserveAmmoChanged?.Invoke(ReserveAmmo);
         }
     }
@@ -100,7 +103,7 @@ public abstract class WeaponBase : MonoBehaviour
     private void OnDestroy()
     {
         if (PlayerBackpack.Instance != null)
-            PlayerBackpack.Instance.OnItemChanged -= OnInventoryItemChanged;
+            PlayerBackpack.Instance.OnSlotChanged -= OnInventoryItemChanged;
         Uninitialize();
     }
 
@@ -117,7 +120,7 @@ public abstract class WeaponBase : MonoBehaviour
         _getAimTargetWorldPos = null;
 
         if (PlayerBackpack.Instance != null)
-            PlayerBackpack.Instance.OnItemChanged -= OnInventoryItemChanged;
+            PlayerBackpack.Instance.OnSlotChanged -= OnInventoryItemChanged;
     }
 
     private void OnDisable()
@@ -283,10 +286,17 @@ public abstract class WeaponBase : MonoBehaviour
 
     #region 背包回调
 
-    private void OnInventoryItemChanged(int itemid, int newAmount)
+    private void OnInventoryItemChanged(int slotIndex)
     {
-        if (itemid == _config.DefaultAmmo)
-            OnReserveAmmoChanged?.Invoke(newAmount);
+        // 槽位变化时，重新查询当前弹药类型的真实数量
+        int currentReserve = ReserveAmmo;
+
+        // 只有数量真正发生变化时才通知UI，避免每个槽位变动都刷新
+        if (currentReserve != _lastReserveAmmo)
+        {
+            _lastReserveAmmo = currentReserve;
+            OnReserveAmmoChanged?.Invoke(currentReserve);
+        }
     }
 
     #endregion

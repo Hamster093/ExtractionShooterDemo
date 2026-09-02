@@ -121,4 +121,9 @@ public static class ItemRegistry
     /// 获取所有物品（只读）
     ///</summary>
     public static IReadOnlyDictionary<int, ItemData> All => _items;
+
+    /// <summary>
+    /// 安全获取，不报错，适合频繁调用场景
+    /// </summary>
+    public static bool TryGet(int id, out ItemData item) => _items.TryGetValue(id, out item);
 }

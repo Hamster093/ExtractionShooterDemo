@@ -76,10 +76,10 @@ public class LootPickup : MonoBehaviour
 
     /// <summary>
     /// 按钮点击回调
-    /// TODO 拾取逻辑后续由背包/装备系统实现
     /// </summary>
     private void OnLootButtonClicked()
     {
-        Debug.Log("[LootPickup] 玩家拾取了战利品：" + gameObject.name);
+        Debug.Log("[LootPickup] 玩家打开了战利品：" + gameObject.name);
+        UIController.Instance.OpenLoot();
     }
 }

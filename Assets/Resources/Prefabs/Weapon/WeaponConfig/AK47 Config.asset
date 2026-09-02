@@ -18,8 +18,8 @@ MonoBehaviour:
   damage: 10
   fireRate: 0.1
   fireMode: 1
-  ammoType: Ammo_7.62
-  initialReserveAmmo: 15
+  DefaultAmmo: 1
+  initialReserveAmmo: 90
   maxSpread: 3
   spreadPerShot: 0.5
   verticalRecoilCurve:

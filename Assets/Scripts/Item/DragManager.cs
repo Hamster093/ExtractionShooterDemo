@@ -7,10 +7,8 @@
 *****************************************************/
 
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -24,28 +22,53 @@ public class DragManager : MonoBehaviour
 
     // --- 拖拽状态变量 ---
     private bool isDragging = false;          // 当前是否处于拖拽状态
-    private ChestManager sourceChest;         // 拖拽起始的宝箱
+    private ISlotOwner sourceSlotOwner;         // 拖拽起始的宝箱
     private int sourceIndex;                  // 拖拽起始的槽位索引
     private Image sourceSlotImage;            // 拖拽起始的槽位 UI 组件
     private GameObject dragClone;             // 拖拽时跟随鼠标的克隆体
     private RectTransform dragCloneRect;      // 克隆体的 RectTransform，用于位置更新
 
+    private Dictionary<Image, (ISlotOwner owner, int index)> _slotMap = new();
+
+    // 已绑定过拖拽事件的格子，避免重复添加 EventTrigger
+    private readonly HashSet<Image> _boundSlots = new();
+
     private void Start()
     {
         // 如果 Inspector 中未手动指定宝箱列表，则自动查找场景中所有的 ChestManager
+        // 注意：面板初始为 inactive（由 BaseUIPanel 控制显隐），必须包含 inactive 对象
         if (chests == null || chests.Count == 0)
         {
-            chests = new List<ChestManager>(FindObjectsByType<ChestManager>(FindObjectsSortMode.None));
+            chests = new List<ChestManager>(FindObjectsByType<ChestManager>(FindObjectsInactive.Include, FindObjectsSortMode.None));
         }
 
         // 遍历所有宝箱及其槽位，为每个槽位动态添加拖拽事件监听
         foreach (var chest in chests)
         {
-            foreach (var slotImage in chest.slotImages)
+            chest.EnsureInitialized(); // 面板未激活时 Awake 未执行，这里手动收集格子
+            for (int i = 0; i < chest.slotImages.Count; i++)
             {
-                AddEventTriggersToSlot(slotImage);
+                var slot = chest.slotImages[i];
+                if (!_boundSlots.Add(slot)) continue; // 已绑定则跳过
+                _slotMap[slot] = (chest, i); // 👈 O(1) 缓存
+                AddEventTriggersToSlot(slot);
             }
         }
+
+        var backpackUI = UIController.Instance != null ? UIController.Instance.backpackUI : null;
+        if (backpackUI == null)
+            backpackUI = FindFirstObjectByType<BackpackUI>(FindObjectsInactive.Include);
+        if (backpackUI != null && backpackUI.SlotImages != null)
+        {
+            for (int i = 0; i < backpackUI.SlotImages.Count; i++)
+            {
+                var slot = backpackUI.SlotImages[i];
+                if (!_boundSlots.Add(slot)) continue;
+                _slotMap[slot] = (backpackUI, i);
+                AddEventTriggersToSlot(slot);
+            }
+        }
+
     }
 
     /// <summary>
@@ -54,6 +77,11 @@ public class DragManager : MonoBehaviour
     /// <param name="slot">目标槽位的 Image 组件</param>
     private void AddEventTriggersToSlot(Image slot)
     {
+        // 拖拽依赖 EventSystem 射线命中该格子。
+        // Hotbar 等格子的 Icon 默认 raycastTarget=false，会导致 BeginDrag/Drag/EndDrag 事件完全收不到，
+        // 这里强制开启，保证所有参与拖拽的格子可被射线命中。
+        slot.raycastTarget = true;
+
         // 获取或创建 EventTrigger 组件
         EventTrigger trigger = slot.GetComponent<EventTrigger>();
         if (trigger == null)
@@ -85,38 +113,30 @@ public class DragManager : MonoBehaviour
     /// </summary>
     private void OnBeginDrag(PointerEventData eventData, Image slot)
     {
-        // 查找当前槽位所属的宝箱及索引
-        ChestManager ownerChest = null;
-        int index = -1;
-        foreach (var chest in chests)
-        {
-            // 获取 slot 在 chest.slotImages 列表中的索引，并赋值给整型变量 idx
-            int idx = chest.slotImages.IndexOf(slot);
-            if (idx != -1)
-            {
-                ownerChest = chest;
-                index = idx;
-                break;
-            }
-        }
+        if (!_slotMap.TryGetValue(slot, out var slotInfo)) return;
+
+        var container = slotInfo.owner.Container; // IItemContainer
+        var index = slotInfo.index;
+
         // 如果找不到归属宝箱或槽位无效，直接返回
-        if (ownerChest == null || index == -1) return;
+        if (container == null || index == -1) return;
 
         // 检查该槽位是否有物品
-        ItemData item = ownerChest.GetItem(index);
-        if (item == null) return;
+        ItemInstance item = container.GetItem(index);
+        //空壳实例检查
+        if (item == null || item.amount <= 0) return;
 
         // 根据物品的 iconKey 从 Resources 加载图标 Sprite
-        Sprite icon = Resources.Load<Sprite>("UI/" + item.iconKey);
+        Sprite icon = Resources.Load<Sprite>("UI/" + item.Data.iconKey);
         if (icon == null)
         {
-            Debug.LogWarning($"图标未找到: UI/{item.iconKey}");
+            Debug.LogWarning($"图标未找到: UI/{item.Data.iconKey}");
             return;
         }
 
         // 记录拖拽源信息
         isDragging = true;
-        sourceChest = ownerChest;
+        sourceSlotOwner = slotInfo.owner;
         sourceIndex = index;
         sourceSlotImage = slot;
 
@@ -165,28 +185,26 @@ public class DragManager : MonoBehaviour
             if (targetSlot != null && targetSlot != sourceSlotImage)
             {
                 // 查找目标槽位所属的宝箱及索引
-                ChestManager targetChest = null;
-                int targetIndex = -1;
-                foreach (var chest in chests)
+                if (_slotMap.TryGetValue(targetSlot, out var targetInfo))
                 {
-                    int idx = chest.slotImages.IndexOf(targetSlot);
-                    if (idx != -1)
+                    // 执行物品从源位置到目标位置的移动/交换
+                    bool success = ItemContainer.MoveBetween(sourceSlotOwner.Container, sourceIndex,targetInfo.owner.Container, targetInfo.index);
+
+                    // 移动后刷新双方 UI
+                    if (success)
                     {
-                        targetChest = chest;
-                        targetIndex = idx;
-                        break;
+                        sourceSlotOwner.RefreshSlot(sourceIndex);
+                        // 修复：同容器不同索引时也必须刷新目标格子
+                        if (!ReferenceEquals(targetInfo.owner, sourceSlotOwner) || targetInfo.index != sourceIndex)
+                            targetInfo.owner.RefreshSlot(targetInfo.index);
                     }
                 }
-                // 如果目标有效，执行物品从源位置到目标位置的移动/交换
-                if (targetChest != null && targetIndex != -1)
-                {
-                    sourceChest.MoveItemFromTo(sourceIndex, targetChest, targetIndex);
-                }
+                
             }
         }
         // 重置拖拽状态
         isDragging = false;
-        sourceChest = null;
+        sourceSlotOwner = null;
         sourceSlotImage = null;
     }
 

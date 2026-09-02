@@ -59,6 +59,14 @@ public class PlayerInputHandler : MonoBehaviour
     /// 换弹触发事件
     /// </summary>
     public event Action OnReloadTriggered;
+    /// <summary>
+    /// 武器栏位切换事件，参数为槽位索引 (0-7)
+    /// </summary>
+    public event Action<int> OnSwitchSlot;
+    /// <summary>
+    /// V键切换近战武器
+    /// </summary>
+    public event Action MeleeWeapon;
     #endregion
 
     /// <summary>
@@ -77,15 +85,6 @@ public class PlayerInputHandler : MonoBehaviour
     /// 视角跟随开关
     /// </summary>
     public bool IsAimFollowEnabled = true;
-
-    /// <summary>
-    /// 武器栏位切换事件，参数为槽位索引 (0-7)
-    /// </summary>
-    public event Action<int> OnSwitchSlot;
-    /// <summary>
-    /// V键切换近战武器
-    /// </summary>
-    public event Action MeleeWeapon;
 
     #region 冲刺/翻滚判定
     [Header("冲刺/翻滚的判定间隔")]
@@ -141,6 +140,7 @@ public class PlayerInputHandler : MonoBehaviour
         };
 
         _playerActions.Player.MeleeWeapon.performed += _ => MeleeWeapon?.Invoke();
+
     }
     /// <summary>
     /// 启用输入映射
