@@ -37,8 +37,12 @@ public class ItemData
 
 public enum ItemType
 {
+    None,
     Consumable,   // 消耗品（鸡腿、药水）
     Equipment,    // 装备（手枪、步枪）
+    Helmet,       //头盔
+    Chest,        //护甲
+    Backpack,     //背包
     Ammo,         // 弹药
     Material      // 材料/任务道具
 }

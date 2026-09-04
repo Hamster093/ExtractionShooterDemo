@@ -13,8 +13,42 @@ using UnityEngine;
 /// 玩家武器栏位管理器
 /// 职责：记录当前激活的武器栏位索引(0/1)及对应WeaponBase引用
 /// </summary>
-public class PlayerWeaponSlots : MonoBehaviour
+public class PlayerWeaponSlots
 {
+    private PlayerController _playerController;
+    private bool _isRegistered = false; // 防止重复订阅
+
+    public PlayerWeaponSlots(PlayerController playerController)
+    {
+        _playerController=playerController;
+    }
+    /// <summary>
+    /// 由 PlayerControlle调用
+    /// </summary>
+    public void Enable()
+    {
+        if (_isRegistered) return;
+
+        // 初始化计数器
+        _equippedCount = 0;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_weapons[i] != null) _equippedCount++;
+        }
+
+        PlayerEvents.Instance.OnEquipmentSlotChanged += HandleEquipmentSlotChanged;
+        _isRegistered = true;
+    }
+    /// <summary>
+    /// 由 PlayerController中调用
+    /// </summary>
+    public void Disable()
+    {
+        if (!_isRegistered) return;
+
+        PlayerEvents.Instance.OnEquipmentSlotChanged -= HandleEquipmentSlotChanged;
+        _isRegistered = false;
+    }
     /// <summary>
     /// 最大栏位数（固定为3：主武器+副武器）
     /// </summary>
@@ -23,12 +57,12 @@ public class PlayerWeaponSlots : MonoBehaviour
     /// <summary>
     /// 当前激活的栏位索引 (0 = 主武器, 1 = 副武器,2 = 近战武器)
     /// </summary>
-    [SerializeField] private int _activeSlotIndex;
+     private int _activeSlotIndex;
 
     /// <summary>
     /// 各栏位绑定的武器实例（由外部装备系统赋值）
     /// </summary>
-    [SerializeField] private WeaponBase[] _weapons = new WeaponBase[SlotCount];
+     private WeaponBase[] _weapons = new WeaponBase[SlotCount];
 
     /// <summary>
     /// 已装备的武器数量（用于UI显示）
@@ -62,16 +96,6 @@ public class PlayerWeaponSlots : MonoBehaviour
     /// 当前是否持有任何武器
     /// </summary>
     public bool HasAnyWeapon => _equippedCount > 0;
-
-    //初始化时同步计数器
-    private void Awake()
-    {
-        _equippedCount = 0;
-        for (int i = 0; i < SlotCount; i++)
-        {
-            if (_weapons[i] != null) _equippedCount++;
-        }
-    }
 
     /// <summary>
     /// 获取指定栏位的武器实例
@@ -149,5 +173,24 @@ public class PlayerWeaponSlots : MonoBehaviour
 
         if (hadWeapon) OnHasWeaponChanged?.Invoke(false);
         OnSlotChanged?.Invoke(0, null);
+    }
+    private void HandleEquipmentSlotChanged(int slotIndex, ItemInstance item)
+    {
+        if (item == null)
+        {
+            // 卸下：将对应栏位清空
+            SetWeapon(slotIndex, null);
+            return;
+        }
+
+        // 根据物品ID创建武器实例（使用工厂类）
+        WeaponBase weapon = WeaponFactory.CreateWeapon(item.itemID);
+        if (weapon == null)
+        {
+            return;
+        }
+
+        // 装备到指定栏位
+        _playerController.PickupWeapon(weapon, slotIndex);
     }
 }

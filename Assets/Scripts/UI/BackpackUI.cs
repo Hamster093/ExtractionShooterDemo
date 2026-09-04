@@ -46,10 +46,10 @@ public class BackpackUI : MonoBehaviour,ISlotOwner
         if (index < 0 || index >= _slotImages.Count) return;
 
         var item = Container.GetItem(index);
-        bool hasItem = item != null && item.amount > 0;
+        bool hasItem = item != null && item.amount > 0; 
 
         _slotImages[index].sprite = hasItem ? ResourceManager.LoadUISprite(item.Data.iconKey) : null;
-        _slotImages[index].color = hasItem ? Color.white : new Color(1, 1, 1, 0);
+        _slotImages[index].color = hasItem ? Color.white : new Color(1, 1, 1, 0.2f);
     }
 
     /// <summary>

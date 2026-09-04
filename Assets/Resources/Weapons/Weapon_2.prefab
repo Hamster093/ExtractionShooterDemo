@@ -336,7 +336,7 @@ GameObject:
   - component: {fileID: 5457979407251343256}
   - component: {fileID: 8780777201944656569}
   m_Layer: 0
-  m_Name: M1911
+  m_Name: Weapon_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

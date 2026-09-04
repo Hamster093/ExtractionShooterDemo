@@ -22,13 +22,13 @@ public class DragManager : MonoBehaviour
 
     // --- 拖拽状态变量 ---
     private bool isDragging = false;          // 当前是否处于拖拽状态
-    private ISlotOwner sourceSlotOwner;         // 拖拽起始的宝箱
+    private ISlotOwner sourceSlotOwner;       // 拖拽起始的宝箱
     private int sourceIndex;                  // 拖拽起始的槽位索引
     private Image sourceSlotImage;            // 拖拽起始的槽位 UI 组件
-    private GameObject dragClone;             // 拖拽时跟随鼠标的克隆体
-    private RectTransform dragCloneRect;      // 克隆体的 RectTransform，用于位置更新
+    public DragVisualController visualController; // 拖拽视觉控制器，负责显示跟随鼠标的图标
 
-    private Dictionary<Image, (ISlotOwner owner, int index)> _slotMap = new();
+    private Dictionary<Image, (ISlotOwner owner, int index, ISlotDragHandler handler)> _slotInfo = new();
+
 
     // 已绑定过拖拽事件的格子，避免重复添加 EventTrigger
     private readonly HashSet<Image> _boundSlots = new();
@@ -49,8 +49,9 @@ public class DragManager : MonoBehaviour
             for (int i = 0; i < chest.slotImages.Count; i++)
             {
                 var slot = chest.slotImages[i];
+                ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<DefaultSlotHandler>();
                 if (!_boundSlots.Add(slot)) continue; // 已绑定则跳过
-                _slotMap[slot] = (chest, i); // 👈 O(1) 缓存
+                _slotInfo[slot] = (chest, i, handler); //  O(1) 缓存
                 AddEventTriggersToSlot(slot);
             }
         }
@@ -63,8 +64,9 @@ public class DragManager : MonoBehaviour
             for (int i = 0; i < backpackUI.SlotImages.Count; i++)
             {
                 var slot = backpackUI.SlotImages[i];
+                ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<DefaultSlotHandler>();
                 if (!_boundSlots.Add(slot)) continue;
-                _slotMap[slot] = (backpackUI, i);
+                _slotInfo[slot] = (backpackUI, i, handler);
                 AddEventTriggersToSlot(slot);
             }
         }
@@ -78,7 +80,6 @@ public class DragManager : MonoBehaviour
     private void AddEventTriggersToSlot(Image slot)
     {
         // 拖拽依赖 EventSystem 射线命中该格子。
-        // Hotbar 等格子的 Icon 默认 raycastTarget=false，会导致 BeginDrag/Drag/EndDrag 事件完全收不到，
         // 这里强制开启，保证所有参与拖拽的格子可被射线命中。
         slot.raycastTarget = true;
 
@@ -113,10 +114,12 @@ public class DragManager : MonoBehaviour
     /// </summary>
     private void OnBeginDrag(PointerEventData eventData, Image slot)
     {
-        if (!_slotMap.TryGetValue(slot, out var slotInfo)) return;
+        if (!_slotInfo.TryGetValue(slot, out var info)) return;
+        var (owner, index, handler) = info;
 
-        var container = slotInfo.owner.Container; // IItemContainer
-        var index = slotInfo.index;
+        if (!handler.CanBeginDrag(eventData, slot, owner, index))
+            return;
+        var container = info.owner.Container; // IItemContainer
 
         // 如果找不到归属宝箱或槽位无效，直接返回
         if (container == null || index == -1) return;
@@ -126,22 +129,24 @@ public class DragManager : MonoBehaviour
         //空壳实例检查
         if (item == null || item.amount <= 0) return;
 
-        // 根据物品的 iconKey 从 Resources 加载图标 Sprite
-        Sprite icon = Resources.Load<Sprite>("UI/" + item.Data.iconKey);
+        // 根据物品的 iconKey加载图标 Sprite
+        Sprite icon = ResourceManager.LoadUISprite(item.Data.iconKey); ; 
         if (icon == null)
         {
             Debug.LogWarning($"图标未找到: UI/{item.Data.iconKey}");
             return;
         }
 
+        handler.OnBeginDrag(eventData, slot, owner, index);
+
         // 记录拖拽源信息
         isDragging = true;
-        sourceSlotOwner = slotInfo.owner;
+        sourceSlotOwner = info.owner;
         sourceIndex = index;
         sourceSlotImage = slot;
 
         // 创建跟随鼠标的视觉克隆体
-        CreateDragClone(icon, slot.rectTransform);
+        visualController.Show(icon, slot.rectTransform,eventData.position);
         // 将原始槽位设为半透明，提示用户该位置物品已被拿起
         slot.color = new Color(1, 1, 1, 0.3f);
     }
@@ -151,8 +156,8 @@ public class DragManager : MonoBehaviour
     /// </summary>
     private void OnDrag(PointerEventData eventData, Image slot)
     {
-        if (!isDragging || dragClone == null) return;
-        UpdateDragClonePosition(eventData.position);
+        if (!isDragging) return;
+        visualController.Follow(eventData.position);
     }
 
     /// <summary>
@@ -160,129 +165,90 @@ public class DragManager : MonoBehaviour
     /// </summary>
     private void OnEndDrag(PointerEventData eventData, Image slot)
     {
+
+        if (!_slotInfo.TryGetValue(slot, out var sourceInfo)) return;
+        var (sourceOwner, srcIdx, sourceHandler) = sourceInfo;
+
         if (!isDragging) return;
 
-        // 恢复原始槽位颜色为不透明
+        // 恢复源槽位透明度
         if (sourceSlotImage != null)
-            sourceSlotImage.color = Color.white;
-
-        // 销毁拖拽克隆体
-        if (dragClone != null)
         {
-            Destroy(dragClone);
-            dragClone = null;
+            Color c = sourceSlotImage.color;
+            c.a = 1f;           // 只恢复不透明，保留颜色值
+            sourceSlotImage.color = c;
         }
 
-        // 修复问题 ：pointerCurrentRaycast 是结构体，不能直接判空
-        // 必须先取出副本，再通过 isValid 属性判断射线检测结果是否有效
-        RaycastResult raycast = eventData.pointerCurrentRaycast;
-        GameObject targetObj = raycast.isValid ? raycast.gameObject : null;
+        // 销毁克隆体
+        visualController.Hide();
 
-        if (targetObj != null)
-        {
-            // 检查释放位置是否是另一个有效的槽位 Image
-            Image targetSlot = targetObj.GetComponent<Image>();
-            if (targetSlot != null && targetSlot != sourceSlotImage)
-            {
-                // 查找目标槽位所属的宝箱及索引
-                if (_slotMap.TryGetValue(targetSlot, out var targetInfo))
-                {
-                    // 执行物品从源位置到目标位置的移动/交换
-                    bool success = ItemContainer.MoveBetween(sourceSlotOwner.Container, sourceIndex,targetInfo.owner.Container, targetInfo.index);
-
-                    // 移动后刷新双方 UI
-                    if (success)
-                    {
-                        sourceSlotOwner.RefreshSlot(sourceIndex);
-                        // 修复：同容器不同索引时也必须刷新目标格子
-                        if (!ReferenceEquals(targetInfo.owner, sourceSlotOwner) || targetInfo.index != sourceIndex)
-                            targetInfo.owner.RefreshSlot(targetInfo.index);
-                    }
-                }
-                
-            }
-        }
-        // 重置拖拽状态
+        // 重置全局拖拽状态
         isDragging = false;
         sourceSlotOwner = null;
         sourceSlotImage = null;
-    }
+        sourceIndex = -1;
 
+        // 检测目标槽位
+        RaycastResult raycast = eventData.pointerCurrentRaycast;
+        Image targetSlot = raycast.isValid ? raycast.gameObject?.GetComponent<Image>() : null;
+
+        (ISlotOwner owner, int index)? targetInfo = null;
+        if (targetSlot != null && _slotInfo.TryGetValue(targetSlot, out var targetData))
+            targetInfo = (targetData.owner, targetData.index);
+
+        // 先让源处理器处理拖拽结束（可自定义逻辑）
+        bool handled = sourceHandler.OnEndDrag(eventData, slot, sourceOwner, srcIdx, targetSlot, targetInfo);
+        if (handled) return;
+
+        // 默认行为：尝试移动到目标槽位
+        if (targetSlot != null && targetInfo.HasValue)
+        {
+            var target = targetInfo.Value;
+            var targetHandler = _slotInfo[targetSlot].handler;
+            if (targetHandler.CanDrop(sourceOwner, srcIdx))
+            {
+                bool success = ItemContainer.MoveBetween(sourceOwner.Container, srcIdx,
+                                                         target.owner.Container, target.index);
+                if (success)
+                {
+                    sourceOwner.RefreshSlot(srcIdx);
+                    // 刷新目标（如果是不同容器或不同索引）
+                    if (!ReferenceEquals(target.owner, sourceOwner) || target.index != srcIdx)
+                        target.owner.RefreshSlot(target.index);
+                }
+
+                //  触发事件：源槽位如果是装备槽
+                if (sourceHandler is EquipmentSlotHandler)
+                {
+                    var newSrcItem = sourceOwner.Container.GetItem(srcIdx);
+                    PlayerEvents.Instance.TriggerEquipmentSlotChanged(srcIdx, newSrcItem);
+                }
+
+                //  触发事件：目标槽位如果是装备槽
+                if (targetHandler is EquipmentSlotHandler)
+                {
+                    var newDstItem = target.owner.Container.GetItem(target.index);
+                    PlayerEvents.Instance.TriggerEquipmentSlotChanged(target.index, newDstItem);
+                }
+            }
+        }
+        else
+        {
+            // 拖拽到空白处：如果是装备槽，触发卸下事件
+            if (sourceHandler is EquipmentSlotHandler)
+            {
+
+            }
+        }
+
+        
+
+    }
     /// <summary>
     /// Drop 事件回调：当前实现中放置逻辑已在 OnEndDrag 中统一处理中处理，因此这里可以保留空实现
     /// </summary>
     private void OnDrop(PointerEventData eventData, Image slot)
     {
         // 可保留空实现
-    }
-
-    /// <summary>
-    /// 创建拖拽克隆体：在 Canvas 下生成一个跟随鼠标的半透明图标副本
-    /// </summary>
-    /// <param name="icon">要显示的图标 Sprite</param>
-    /// <param name="originalRect">原始槽位的 RectTransform，用于同步尺寸</param>
-    private void CreateDragClone(Sprite icon, RectTransform originalRect)
-    {
-        //查找父物体
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-            //按类型查找第一个对象
-            canvas = FindFirstObjectByType<Canvas>();
-
-        if (canvas == null)
-        {
-            Debug.LogError("场景中没有 Canvas！");
-            return;
-        }
-
-        // 创建克隆体 GameObject 并挂载到 Canvas 下
-        dragClone = new GameObject("DragClone");
-        dragClone.transform.SetParent(canvas.transform, false);// false 表示不继承父级缩放
-        dragClone.transform.SetAsLastSibling();// 确保克隆体渲染在最上层
-
-        // 添加 Image 组件并配置显示属性
-        Image cloneImage = dragClone.AddComponent<Image>();
-        cloneImage.sprite = icon;
-        cloneImage.raycastTarget = false;// 关闭射线检测，防止克隆体阻挡下方槽位的 Drop/EndDrag 事件
-        cloneImage.color = new Color(1, 1, 1, 0.8f);
-
-        // 缓存 RectTransform 并同步原始槽位尺寸
-        dragCloneRect = dragClone.GetComponent<RectTransform>();
-        dragCloneRect.sizeDelta = originalRect.sizeDelta;
-    }
-
-    /// <summary>
-    /// 更新拖拽克隆体位置：将屏幕坐标转换为 Canvas 下的世界坐标
-    /// </summary>
-    /// <param name="screenPos">鼠标在屏幕上的坐标（来自 PointerEventData）</param>
-    private void UpdateDragClonePosition(Vector2 screenPos)
-    {
-        if (dragCloneRect == null) return;
-
-        // 父级 RectTransform（即 Canvas）
-        RectTransform parentRect = dragCloneRect.parent as RectTransform;
-        if (parentRect == null) return;
-
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null) canvas = FindFirstObjectByType<Canvas>();
-
-        // 依据画布渲染模式选择相机：
-        // - Screen Space - Overlay：必须传 null 相机
-        // - Screen Space - Camera / World Space：优先用画布指定相机，未指定再回退 Camera.main
-        Camera cam;
-        if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay)
-            cam = null;
-        else if (canvas != null && canvas.worldCamera != null)
-            cam = canvas.worldCamera;
-        else
-            cam = Camera.main;
-
-        RectTransformUtility.ScreenPointToWorldPointInRectangle(
-            parentRect,
-            screenPos,
-            cam,
-            out Vector3 worldPos);
-        // 应用计算出的位置
-        dragCloneRect.position = worldPos;
     }
 }

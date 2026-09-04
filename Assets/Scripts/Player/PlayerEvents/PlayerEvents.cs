@@ -26,6 +26,8 @@ public class PlayerEvents
     public event Action<int, int> OnCurrentAmmoChanged;      // 当前弹匣弹药变化时触发(当前弹匣, 最大弹匣)
     public event Action<int> OnReserveAmmoChanged;           // 备弹量变化时触发(备弹量)
 
+    public event Action<int, ItemInstance> OnEquipmentSlotChanged;//装备槽数据变化事件
+
 
     // ---（仅允许 PlayerController 内部调用）---
 
@@ -38,4 +40,9 @@ public class PlayerEvents
 
     internal void TriggerReserveAmmoChanged(int reserve)
         => OnReserveAmmoChanged?.Invoke(reserve);
+
+    internal void TriggerEquipmentSlotChanged(int slotIndex, ItemInstance item)
+    {
+        OnEquipmentSlotChanged?.Invoke(slotIndex, item);
+    }
 }

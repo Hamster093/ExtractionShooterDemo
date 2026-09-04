@@ -16,9 +16,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private PlayerMovementConfig _config;     // 配置组件
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
-    [SerializeField] private PlayerWeaponSlots _weaponSlots;  //武器栏位
-    private WeaponBase _lastActiveWeapon;//最后激活的武器
 
+    private PlayerWeaponSlots _weaponSlots;  //武器栏位
+    private WeaponBase _lastActiveWeapon;//最后激活的武器
+    public Transform _weaponTrans;
     public StateMachine _stateMachine;
 
     // 缓存输入
@@ -36,6 +37,9 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
+        _weaponSlots=new PlayerWeaponSlots(this);
+        _weaponSlots.Enable();
+
         _stateMachine = new StateMachine();
 
         if (_weaponSlots == null)
@@ -67,7 +71,7 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// 拾取武器并装备到指定栏位
+    /// 装备武器到指定栏位
     /// </summary>
     /// <param name="weapon">拾取到的武器实例</param>
     /// <param name="targetSlot">目标栏位索引 (0=主武器, 1=副武器, 2=近战)</param>
@@ -75,13 +79,15 @@ public class PlayerController : MonoBehaviour
     {
         if (weapon == null || _weaponSlots == null) return;
 
-        // 1. 将武器记录到栏位系统（内部会自动触发OnSlotChanged如果设为当前栏位）
+        //  将武器记录到栏位系统（内部会自动触发OnSlotChanged如果设为当前栏位）
         _weaponSlots.SetWeapon(targetSlot, weapon);
 
-        // 2. 初始化武器
+        //  初始化武器
         weapon.Initialize(_animDriver, gameObject);
 
-        // 3. 如果装备的就是当前激活栏位，额外刷新UI
+        weapon.transform.SetParent(_weaponTrans, false);
+
+        //  如果装备的就是当前激活栏位，额外刷新UI
         if (targetSlot == _weaponSlots.ActiveSlotIndex)
         {
             PlayerEvents.Instance.TriggerWeaponChanged(targetSlot, weapon);
@@ -221,6 +227,7 @@ public class PlayerController : MonoBehaviour
                 _lastActiveWeapon.CancelFire();
                 _lastActiveWeapon = null;
             }
+            _weaponSlots?.Disable();
         }
     }
 
