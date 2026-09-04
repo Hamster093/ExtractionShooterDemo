@@ -117,3 +117,5 @@ Assets/Resources/paichu.meta
 CODELY.md
 Assets/TJGenerators.meta
 Assets/TJGenerators/History.meta
+.codely-cli/
+.codely.packages/
