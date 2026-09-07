@@ -1,53 +1,60 @@
-﻿using UnityEngine;
+﻿/****************************************************
+    文件：EquipmentSlotHandler.cs
+	作者：DADI
+    邮箱: 1581507659@qq.com
+    日期：2026-09-06 16:20:00
+	功能：装备槽位行为（由 ChestManager.isEquipmentGrid 自动挂载）
+*****************************************************/
+
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class EquipmentSlotHandler : DefaultSlotHandler // 继承默认，覆盖判断
+/// <summary>
+/// 装备槽处理器：
+/// 1. CanDrop：按同物体 SlotUI 上的类别标志（allowedType）过滤物品类型，None 表示不限制；
+/// 2. OnEndDrag：拖到空白处（非槽位）时卸下装备，物品放回背包并广播装备槽变化事件。
+/// 注意：此组件在运行时由 ChestManager 自动挂载，Inspector 无法配置，
+///       因此格子的类别标志统一配置在同物体 SlotUI 的 allowedType 字段上。
+/// </summary>
+public class EquipmentSlotHandler : DefaultSlotHandler
 {
-    [Header("装备槽配置")]
-    public ItemType allowedSlot = ItemType.Equipment;
-
-    [Header("装备效果（武器）")]
-    [SerializeField] private Transform _handSocket;      // 手部武器挂载点
-    [SerializeField] private PlayerController _playerController; // 玩家控制器
-    private GameObject _currentWeaponInstance;          // 当前装备的武器模型
-
     public override bool CanDrop(ISlotOwner sourceOwner, int sourceIndex)
     {
         var item = sourceOwner.Container.GetItem(sourceIndex);
         if (item == null) return false;
 
-        return item.Data.type == allowedSlot;
+        var slotUI = GetComponent<SlotUI>();
+        if (slotUI == null || slotUI.allowedType == ItemType.None) return true;
+
+        return item.Data.type == slotUI.allowedType;
     }
 
-    public override bool OnEndDrag(PointerEventData eventData, Image slot, 
+    public override bool OnEndDrag(PointerEventData eventData, Image slot,
         ISlotOwner owner, int index, Image targetSlot, (ISlotOwner owner, int index)? targetInfo)
     {
-
-        // 如果拖拽到空白处（非槽位），执行卸下逻辑
+        // 拖到空白处（非槽位）：卸下装备，放回背包
         if (targetSlot == null)
         {
-            // 示例：将装备从当前槽位移除，添加到背包
             var item = owner.Container.GetItem(index);
             if (item != null)
             {
-                // 从当前容器移除
+                // 从装备槽移除并放回背包（保留原数量）
                 owner.Container.SetItem(index, null);
-                // 添加到背包（具体逻辑取决于你的背包添加方法）
-                PlayerBackpack.Instance.AddItem(item.itemID,1);
+                GameService.Backpack.AddItem(item.itemID, item.amount);
 
-                // 刷新 UI
+                // 刷新装备槽与背包UI
                 owner.RefreshSlot(index);
+                var backpackUI = FindFirstObjectByType<BackpackUI>(FindObjectsInactive.Include);
+                if (backpackUI != null) backpackUI.RefreshUI();
 
-                // 触发事件，通知装备槽已卸下
+                // 广播卸下事件：武器栏等订阅方据此清空对应栏位
                 PlayerEvents.Instance.TriggerEquipmentSlotChanged(index, null);
             }
-            return true; // 告诉管理器已处理，不要再执行默认移动
+            return true; // 已处理，阻止 DragManager 执行默认移动
         }
 
-        // 如果目标是另一个槽位，调用基类逻辑（走移动/交换）
+        // 目标是其他槽位：交回 DragManager 执行默认移动/交换
         return false;
     }
-
-   
 }

@@ -6,11 +6,15 @@
 	功能：容器逻辑类
 *****************************************************/
 
+using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class ItemContainer : IItemContainer
 {
-    public readonly List<ItemInstance> _slots;
+    private readonly List<ItemInstance> _slots;
+
+    public event Action<int> OnSlotChanged;
 
     public int SlotCount => _slots.Count;
 
@@ -35,7 +39,11 @@ public class ItemContainer : IItemContainer
     /// <param name="item">物品实例</param>
     public void SetItem(int index, ItemInstance item)
     {
-        if (index >= 0 && index < _slots.Count) _slots[index] = item;
+        if (index >= 0 && index < _slots.Count)
+        {
+            _slots[index] = item;
+            OnSlotChanged?.Invoke(index);
+        }
     }
 
     /// <summary>
@@ -46,6 +54,8 @@ public class ItemContainer : IItemContainer
     public void Swap(int a, int b)
     {
         (_slots[a], _slots[b]) = (_slots[b], _slots[a]);
+        OnSlotChanged?.Invoke(a);
+        OnSlotChanged?.Invoke(b);
     }
 
     /// <summary>
@@ -65,13 +75,25 @@ public class ItemContainer : IItemContainer
         // 获取目标位置的物品（可能为 null，表示目标槽位为空）
         var dstItem = dst.GetItem(dstIdx);
 
-        // 将目标位置的物品放回源位置（实现双向交换，而非单向覆盖）
+        //  新增：如果目标格有同类物品且未满叠，优先尝试合并
+        if (dstItem != null && dstItem.itemID == srcItem.itemID)
+        {
+            var data = ItemRegistry.Get(srcItem.itemID);
+            if (data != null && dstItem.amount < data.maxStack)
+            {
+                int canAdd = Mathf.Min(srcItem.amount, data.maxStack - dstItem.amount);
+                dstItem.amount += canAdd;
+                srcItem.amount -= canAdd;
+
+                dst.SetItem(dstIdx, dstItem); // 触发UI刷新
+                src.SetItem(srcIdx, srcItem.amount > 0 ? srcItem : null);
+                return true;
+            }
+        }
+
+        // 无法合并时，执行原始交换逻辑
         src.SetItem(srcIdx, dstItem);
-
-        // 将源位置的物品放入目标位置
         dst.SetItem(dstIdx, srcItem);
-
-        // 交换完成，返回成功
         return true;
     }
 
@@ -83,6 +105,7 @@ public class ItemContainer : IItemContainer
         for (int i = 0; i < _slots.Count; i++)
         {
             _slots[i] = null;
+            OnSlotChanged?.Invoke(i);
         }
     }
 }

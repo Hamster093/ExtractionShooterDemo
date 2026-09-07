@@ -25,7 +25,6 @@ public class PlayerController : MonoBehaviour
     // 缓存输入
     public Vector3 _moveDirection;  //移动方向
     public bool _jumpPressed;
-    public bool _attackPressed;
     public bool _isSprinting;
 
     public bool IsGrounded { get; private set; }
@@ -82,6 +81,15 @@ public class PlayerController : MonoBehaviour
         //  将武器记录到栏位系统（内部会自动触发OnSlotChanged如果设为当前栏位）
         _weaponSlots.SetWeapon(targetSlot, weapon);
 
+        //  当前激活栏位没有武器时，自动切换到新装备的栏位
+        //  （SwitchTo 触发 OnSlotChanged → 武器初始化/弹药UI/HUD 选中特效整条链自动刷新）
+        bool autoSwitched = false;
+        if (_weaponSlots.ActiveWeapon == null)
+        {
+            autoSwitched = true;
+            _weaponSlots.SwitchTo(targetSlot);
+        }
+
         //  初始化武器
         weapon.Initialize(_animDriver, gameObject);
 
@@ -93,7 +101,7 @@ public class PlayerController : MonoBehaviour
             PlayerEvents.Instance.TriggerWeaponChanged(targetSlot, weapon);
         }
 
-        Debug.Log($"[PlayerController] 拾取武器 {weapon.name} 到栏位 {targetSlot}");
+        Debug.Log($"[PlayerController] 拾取武器 {weapon.name} 到栏位 {targetSlot} | 当前激活栏位 {_weaponSlots.ActiveSlotIndex} | 自动切换：{(autoSwitched ? "是" : "否(激活栏位已有武器)")}");
     }
 
     /// <summary>

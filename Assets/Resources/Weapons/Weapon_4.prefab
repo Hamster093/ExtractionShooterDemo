@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 3562351972735230598}
   - component: {fileID: 2051744261545751099}
   m_Layer: 0
-  m_Name: AK74
+  m_Name: Weapon_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

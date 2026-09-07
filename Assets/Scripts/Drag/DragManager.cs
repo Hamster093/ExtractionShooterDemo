@@ -24,14 +24,14 @@ public class DragManager : MonoBehaviour
     private bool isDragging = false;          // 当前是否处于拖拽状态
     private ISlotOwner sourceSlotOwner;       // 拖拽起始的宝箱
     private int sourceIndex;                  // 拖拽起始的槽位索引
-    private Image sourceSlotImage;            // 拖拽起始的槽位 UI 组件
+    private SlotUI sourceSlotUI;            // 拖拽起始的槽位 UI 组件
     public DragVisualController visualController; // 拖拽视觉控制器，负责显示跟随鼠标的图标
 
-    private Dictionary<Image, (ISlotOwner owner, int index, ISlotDragHandler handler)> _slotInfo = new();
+    private Dictionary<SlotUI, (ISlotOwner owner, int index, ISlotDragHandler handler)> _slotInfo = new();
 
 
     // 已绑定过拖拽事件的格子，避免重复添加 EventTrigger
-    private readonly HashSet<Image> _boundSlots = new();
+    private readonly HashSet<SlotUI> _boundSlots = new();
 
     private void Start()
     {
@@ -46,9 +46,11 @@ public class DragManager : MonoBehaviour
         foreach (var chest in chests)
         {
             chest.EnsureInitialized(); // 面板未激活时 Awake 未执行，这里手动收集格子
-            for (int i = 0; i < chest.slotImages.Count; i++)
+            for (int i = 0; i < chest.slots.Count; i++)
             {
-                var slot = chest.slotImages[i];
+                var slot = chest.slots[i];
+                if (slot == null) continue;
+
                 ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<DefaultSlotHandler>();
                 if (!_boundSlots.Add(slot)) continue; // 已绑定则跳过
                 _slotInfo[slot] = (chest, i, handler); //  O(1) 缓存
@@ -57,18 +59,39 @@ public class DragManager : MonoBehaviour
         }
 
         var backpackUI = UIController.Instance != null ? UIController.Instance.backpackUI : null;
-        if (backpackUI == null)
-            backpackUI = FindFirstObjectByType<BackpackUI>(FindObjectsInactive.Include);
-        if (backpackUI != null && backpackUI.SlotImages != null)
+        // 空壳 BackpackUI（未挂格子）会导致背包格子注册失败，这里在所有 BackpackUI 中挑选“有格子”的那个
+        if (backpackUI == null || backpackUI.Slots == null || backpackUI.Slots.Count == 0)
         {
-            for (int i = 0; i < backpackUI.SlotImages.Count; i++)
+            backpackUI = null;
+            foreach (var candidate in FindObjectsByType<BackpackUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                var slot = backpackUI.SlotImages[i];
+                if (candidate.Slots != null && candidate.Slots.Count > 0)
+                {
+                    backpackUI = candidate;
+                    break;
+                }
+            }
+        }
+        if (backpackUI != null && backpackUI.Slots != null)
+        {
+            int boundCount = 0;
+            for (int i = 0; i < backpackUI.Slots.Count; i++)
+            {
+                var slot = backpackUI.Slots[i];
+                if (slot == null) continue;
+
                 ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<DefaultSlotHandler>();
                 if (!_boundSlots.Add(slot)) continue;
                 _slotInfo[slot] = (backpackUI, i, handler);
                 AddEventTriggersToSlot(slot);
+                boundCount++;
             }
+            Debug.Log($"[DragManager] 背包UI「{backpackUI.gameObject.name}」注册格子 {boundCount} 个" +
+                      $"，宝箱/装备栏容器 {chests.Count} 个");
+        }
+        else
+        {
+            Debug.LogWarning("[DragManager] 未找到有效的 BackpackUI（无格子），背包格子将无法作为拖拽目标！");
         }
 
     }
@@ -77,11 +100,12 @@ public class DragManager : MonoBehaviour
     /// 为指定的槽位 Image 添加拖拽相关的 EventTrigger 事件
     /// </summary>
     /// <param name="slot">目标槽位的 Image 组件</param>
-    private void AddEventTriggersToSlot(Image slot)
+    private void AddEventTriggersToSlot(SlotUI slot)
     {
         // 拖拽依赖 EventSystem 射线命中该格子。
         // 这里强制开启，保证所有参与拖拽的格子可被射线命中。
-        slot.raycastTarget = true;
+        if (slot.Icon != null)
+            slot.Icon.raycastTarget = true;
 
         // 获取或创建 EventTrigger 组件
         EventTrigger trigger = slot.GetComponent<EventTrigger>();
@@ -112,12 +136,12 @@ public class DragManager : MonoBehaviour
     /// <summary>
     /// 开始拖拽回调：验证物品有效性，创建拖拽克隆体，并将原槽位半透明化
     /// </summary>
-    private void OnBeginDrag(PointerEventData eventData, Image slot)
+    private void OnBeginDrag(PointerEventData eventData, SlotUI slot)
     {
         if (!_slotInfo.TryGetValue(slot, out var info)) return;
         var (owner, index, handler) = info;
 
-        if (!handler.CanBeginDrag(eventData, slot, owner, index))
+        if (!handler.CanBeginDrag(eventData, slot.Icon, owner, index))
             return;
         var container = info.owner.Container; // IItemContainer
 
@@ -137,24 +161,24 @@ public class DragManager : MonoBehaviour
             return;
         }
 
-        handler.OnBeginDrag(eventData, slot, owner, index);
+        handler.OnBeginDrag(eventData, slot.Icon, owner, index);
 
         // 记录拖拽源信息
         isDragging = true;
         sourceSlotOwner = info.owner;
         sourceIndex = index;
-        sourceSlotImage = slot;
+        sourceSlotUI = slot;
 
         // 创建跟随鼠标的视觉克隆体
-        visualController.Show(icon, slot.rectTransform,eventData.position);
+        visualController.Show(icon, slot.GetComponent<RectTransform>(), eventData.position);
         // 将原始槽位设为半透明，提示用户该位置物品已被拿起
-        slot.color = new Color(1, 1, 1, 0.3f);
+        slot.Icon.color = new Color(1, 1, 1, 0.3f);
     }
 
     /// <summary>
     /// 拖拽中回调：持续更新克隆体位置使其跟随鼠标
     /// </summary>
-    private void OnDrag(PointerEventData eventData, Image slot)
+    private void OnDrag(PointerEventData eventData, SlotUI slot)
     {
         if (!isDragging) return;
         visualController.Follow(eventData.position);
@@ -163,7 +187,7 @@ public class DragManager : MonoBehaviour
     /// <summary>
     /// 结束拖拽回调：恢复原槽位显示，销毁克隆体，检测放置目标并执行物品移动
     /// </summary>
-    private void OnEndDrag(PointerEventData eventData, Image slot)
+    private void OnEndDrag(PointerEventData eventData, SlotUI slot)
     {
 
         if (!_slotInfo.TryGetValue(slot, out var sourceInfo)) return;
@@ -172,11 +196,11 @@ public class DragManager : MonoBehaviour
         if (!isDragging) return;
 
         // 恢复源槽位透明度
-        if (sourceSlotImage != null)
+        if (sourceSlotUI != null)
         {
-            Color c = sourceSlotImage.color;
+            Color c = sourceSlotUI.Icon.color;
             c.a = 1f;           // 只恢复不透明，保留颜色值
-            sourceSlotImage.color = c;
+            sourceSlotUI.Icon.color = c;
         }
 
         // 销毁克隆体
@@ -185,19 +209,29 @@ public class DragManager : MonoBehaviour
         // 重置全局拖拽状态
         isDragging = false;
         sourceSlotOwner = null;
-        sourceSlotImage = null;
+        sourceSlotUI = null;
         sourceIndex = -1;
 
         // 检测目标槽位
         RaycastResult raycast = eventData.pointerCurrentRaycast;
-        Image targetSlot = raycast.isValid ? raycast.gameObject?.GetComponent<Image>() : null;
+
+        SlotUI targetSlot = null;
+        if (raycast.isValid && raycast.gameObject != null)
+        {
+            targetSlot = raycast.gameObject.GetComponent<SlotUI>();
+            if (targetSlot == null)
+                targetSlot = raycast.gameObject.GetComponentInParent<SlotUI>();
+        }
 
         (ISlotOwner owner, int index)? targetInfo = null;
         if (targetSlot != null && _slotInfo.TryGetValue(targetSlot, out var targetData))
             targetInfo = (targetData.owner, targetData.index);
 
+
         // 先让源处理器处理拖拽结束（可自定义逻辑）
-        bool handled = sourceHandler.OnEndDrag(eventData, slot, sourceOwner, srcIdx, targetSlot, targetInfo);
+        // 拖到空白处时 targetSlot 为 null，传 null 给处理器（EquipmentSlotHandler 据此执行卸下逻辑）
+        bool handled = sourceHandler.OnEndDrag(eventData, slot.Icon, sourceOwner, srcIdx,
+                                               targetSlot != null ? targetSlot.Icon : null, targetInfo);
         if (handled) return;
 
         // 默认行为：尝试移动到目标槽位
@@ -247,7 +281,7 @@ public class DragManager : MonoBehaviour
     /// <summary>
     /// Drop 事件回调：当前实现中放置逻辑已在 OnEndDrag 中统一处理中处理，因此这里可以保留空实现
     /// </summary>
-    private void OnDrop(PointerEventData eventData, Image slot)
+    private void OnDrop(PointerEventData eventData, SlotUI slot)
     {
         // 可保留空实现
     }

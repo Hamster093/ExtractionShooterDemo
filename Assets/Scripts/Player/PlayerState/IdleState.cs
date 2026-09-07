@@ -37,12 +37,6 @@ internal class IdleState : BaseState
             _player._stateMachine.ChangeState<JumpState>();
             return;
         }
-
-        if (_player._attackPressed)
-        {
-            _player._attackPressed = false;
-            _player._stateMachine.ChangeState<AttackState>();
-        }
     }
     public override void Exit()
     {

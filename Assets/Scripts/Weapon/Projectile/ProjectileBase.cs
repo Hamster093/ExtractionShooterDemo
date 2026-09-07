@@ -9,7 +9,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.Pool;
-using static UnityEngine.UI.GridLayoutGroup;
 
 public abstract class ProjectileBase : MonoBehaviour
 {

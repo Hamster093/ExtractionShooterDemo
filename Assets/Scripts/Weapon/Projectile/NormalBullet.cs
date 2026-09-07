@@ -25,5 +25,9 @@ public class NormalBullet : ProjectileBase
     {
         // 先执行基类的 CancelInvoke 和基础清理
         base.DestroySelf();
+
+        // 如果需要在归还前做额外清理（如重置特效、音效等），在这里添加
+        // 注意：不要在这里调用 gameObject.SetActive(false)，
+        // Pool.Release() 内部已经处理了激活状态
     }
 }

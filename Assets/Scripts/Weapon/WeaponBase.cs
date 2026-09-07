@@ -9,7 +9,6 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using static UnityEditor.Progress;
 /// <summary>
 /// 武器系统抽象基类
 /// 职责：管理弹药、冷却、换弹等通用逻辑，并将具体射击行为延迟到子类实现
@@ -22,7 +21,7 @@ public abstract class WeaponBase : MonoBehaviour
     [SerializeField] protected Transform _muzzlePoint;
 
     //查询背包内子弹携带量
-    public int ReserveAmmo => PlayerBackpack.Instance?.GetItemCount(_config.DefaultAmmo) ?? 0;
+    public int ReserveAmmo => GameService.Backpack?.GetItemCount(_config.DefaultAmmo) ?? 0;
 
     // ─── 弹药状态 ───
     protected int _currentAmmo;         //当前弹匣内剩余弹药数
@@ -41,6 +40,8 @@ public abstract class WeaponBase : MonoBehaviour
     protected GameObject _owner;
     private Coroutine _reloadCoroutine; // 缓存句柄用于安全中断
     private Func<Vector3> _getAimTargetWorldPos;
+
+    private BackpackData _cachedBackpack;
 
     // ─── 事件 ───
     /// <summary>
@@ -66,44 +67,41 @@ public abstract class WeaponBase : MonoBehaviour
     /// </summary>
     public virtual void Initialize(PlayerAnimatorDriver animDriver, GameObject owner)
     {
-        if (_isInitialized) return;
+        if (_isInitialized)
+        {
+            // 重新装备时仅刷新UI
+            OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+            _lastReserveAmmo = ReserveAmmo;
+            OnReserveAmmoChanged?.Invoke(ReserveAmmo);
+            return;
+        }
+
         _animDriver = animDriver;
         _owner = owner;
         _getAimTargetWorldPos = null;
+        _currentAmmo = _config.maxAmmo;
+        _isInitialized = true;
 
-        // 只有首次初始化才设置弹药和订阅背包
-        if (!_isInitialized)
+        _cachedBackpack = GameService.Backpack;
+        if (_cachedBackpack != null)
         {
-            _currentAmmo = _config.maxAmmo;
-            _isInitialized = true;
+            _cachedBackpack.OnSlotChanged += OnInventoryItemChanged;
 
-            OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
-            _lastReserveAmmo = ReserveAmmo;
-            OnReserveAmmoChanged?.Invoke(ReserveAmmo);
-
-            var inv = PlayerBackpack.Instance;
-            // 订阅库存变化，当该弹药类型数量变动时通知UI
-            if (inv != null)
-            {
-                inv.OnSlotChanged += OnInventoryItemChanged;
-                ///初始化备弹 后续删掉 todo
-                if (inv.GetItemCount(_config.DefaultAmmo) == 0)
-                    inv.AddItem(_config.DefaultAmmo, _config.initialReserveAmmo);
-            }
+            //// 首次初始化时补充初始备弹 后续删除 绑定弹药实体
+            //if (_cachedBackpack.GetItemCount(_config.DefaultAmmo) == 0)
+            //    _cachedBackpack.AddItem(_config.DefaultAmmo, _config.initialReserveAmmo);
         }
         else
         {
-            // 重新装备时，仅通知UI刷新当前真实弹药状态
-            OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
-            _lastReserveAmmo = ReserveAmmo;
-            OnReserveAmmoChanged?.Invoke(ReserveAmmo);
+            Debug.LogError($"[WeaponBase:{_config.name}] GameService.Backpack 未初始化！");
         }
+        OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
+        _lastReserveAmmo = ReserveAmmo;
+        OnReserveAmmoChanged?.Invoke(ReserveAmmo);
     }
 
     private void OnDestroy()
     {
-        if (PlayerBackpack.Instance != null)
-            PlayerBackpack.Instance.OnSlotChanged -= OnInventoryItemChanged;
         Uninitialize();
     }
 
@@ -119,8 +117,11 @@ public abstract class WeaponBase : MonoBehaviour
         _owner = null;
         _getAimTargetWorldPos = null;
 
-        if (PlayerBackpack.Instance != null)
-            PlayerBackpack.Instance.OnSlotChanged -= OnInventoryItemChanged;
+        if (_cachedBackpack != null)
+        {
+            _cachedBackpack.OnSlotChanged -= OnInventoryItemChanged;
+            _cachedBackpack = null;
+        }
     }
 
     private void OnDisable()
@@ -239,6 +240,11 @@ public abstract class WeaponBase : MonoBehaviour
         int needed = _config.maxAmmo - _currentAmmo;
         // 计算实际需要填装的弹药量
         int available = ReserveAmmo;
+
+        Debug.Log($"[Reload] 需要:{needed}, 背包实际:{available}, " +
+              $"弹药ID:{_config.DefaultAmmo}, " +
+              $"背包引用:{_cachedBackpack != null}");
+
         int actualReload = Mathf.Min(needed, available);
 
         if(actualReload <= 0)
@@ -247,8 +253,8 @@ public abstract class WeaponBase : MonoBehaviour
             yield break;
         }
         //从背包扣减弹药
-        bool consumed = PlayerBackpack.Instance != null
-           && PlayerBackpack.Instance.ConsumeItem(_config.DefaultAmmo, actualReload);
+        bool consumed = _cachedBackpack != null
+            && _cachedBackpack.ConsumeItem(_config.DefaultAmmo, actualReload);
 
         if (!consumed)
         {
@@ -288,6 +294,9 @@ public abstract class WeaponBase : MonoBehaviour
 
     private void OnInventoryItemChanged(int slotIndex)
     {
+        Debug.Log($"[Weapon:{_config.name}] 收到槽位变化: slot={slotIndex}, " +
+              $"当前备弹={ReserveAmmo}, 上次记录={_lastReserveAmmo}");
+
         // 槽位变化时，重新查询当前弹药类型的真实数量
         int currentReserve = ReserveAmmo;
 

@@ -1,32 +1,33 @@
 /****************************************************
-    文件：BaseState.cs
+    文件：Enemy.cs
 	作者：DADI
     邮箱: 1581507659@qq.com
-    日期：2026-08-25 17:30:51
-	功能：玩家状态基类
+    日期：2026-09-07 14:39:38
+	功能: 敌人AI
 *****************************************************/
 
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class BaseState : IState
+public enum EnemyState
 {
-    protected readonly PlayerController _player;
-    protected readonly PlayerAnimatorDriver _animDriver;
-    protected readonly PlayerMovementConfig _config;
+    Idle,
+    Chase,
+    Attack,
+}
 
+public class EnemyBaseState : MonoBehaviour , IState
+{
+    protected EnemyController _enemy;
+
+    private void Awake()
+    {
+        _enemy = GetComponent<EnemyController>();
+    }
 
     /// <summary>
     /// 标记该状态是否已经被 Exit
     /// </summary>
     private bool _hasExited;
-
-    protected BaseState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config)
-    {
-        _player = player;
-        _animDriver = ani;
-        _config = config;
-    }
 
     public virtual void Enter()
     {
@@ -48,4 +49,5 @@ public class BaseState : IState
     /// 子类重写此方法
     /// </summary>
     protected virtual void OnTick(float deltaTime) { }
+
 }
