@@ -10,7 +10,7 @@ using static UnityEditor.Experimental.GraphView.GraphView;
 
 internal class JumpState : BaseState
 {
-    public JumpState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
+    public JumpState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats stats) : base(player, ani, stats)
     {
     }
 

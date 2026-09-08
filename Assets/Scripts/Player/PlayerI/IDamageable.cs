@@ -23,5 +23,5 @@ public interface IDamageable
     /// <summary>
     /// 当前是否存活（避免对已死亡对象重复结算）
     /// </summary>
-    bool IsAlive { get; }
+    bool IsDead { get; }
 }

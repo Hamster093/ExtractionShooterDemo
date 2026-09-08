@@ -8,6 +8,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -81,6 +82,8 @@ public class UIController : MonoBehaviour
         panel.OnOpen();
         //刷新鼠标状态
         UpdateCursorState();
+
+        CheckAndBroadcastBlockState();
     }
     /// <summary>
     /// 关闭指定面板
@@ -93,6 +96,8 @@ public class UIController : MonoBehaviour
         _panelStack.Remove(panel);
 
         UpdateCursorState();
+
+        CheckAndBroadcastBlockState();
     }
 
     /// <summary>
@@ -187,6 +192,17 @@ public class UIController : MonoBehaviour
     public void OpenLoot()
     {
         OpenPanel(LootPanel);
+    }
+
+    /// <summary>
+    /// 根据当前面板栈，决定是否阻塞游戏操作（开火/移动等）
+    /// </summary>
+    private void CheckAndBroadcastBlockState()
+    {
+        // 只要存在任何需要鼠标光标（RequireCursor=true）的面板，就禁用开火
+        bool shouldBlock = _panelStack.Any(p => p is BaseUIPanel basePanel && basePanel.RequireCursor);
+        // 广播
+        PlayerEvents.Instance.TriggerGameplayBlocked(shouldBlock);
     }
 }
     

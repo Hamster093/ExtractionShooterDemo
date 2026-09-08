@@ -13,7 +13,7 @@ public class BaseState : IState
 {
     protected readonly PlayerController _player;
     protected readonly PlayerAnimatorDriver _animDriver;
-    protected readonly PlayerMovementConfig _config;
+    protected readonly CharacterStats _stats;
 
 
     /// <summary>
@@ -21,11 +21,11 @@ public class BaseState : IState
     /// </summary>
     private bool _hasExited;
 
-    protected BaseState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config)
+    protected BaseState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats stats)
     {
         _player = player;
         _animDriver = ani;
-        _config = config;
+        _stats = stats;
     }
 
     public virtual void Enter()

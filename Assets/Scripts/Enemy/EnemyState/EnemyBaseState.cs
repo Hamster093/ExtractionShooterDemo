@@ -21,7 +21,7 @@ public class EnemyBaseState : MonoBehaviour , IState
 
     private void Awake()
     {
-        _enemy = GetComponent<EnemyController>();
+        _enemy = GetComponentInParent<EnemyController>();
     }
 
     /// <summary>

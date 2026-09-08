@@ -11,7 +11,7 @@ using UnityEngine.UI;
 
 internal class IdleState : BaseState
 {
-    public IdleState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
+    public IdleState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats _stats) : base(player, ani, _stats)
     {
     }
 
@@ -22,7 +22,7 @@ internal class IdleState : BaseState
     }
     protected override void OnTick(float deltaTime)
     {
-        _animDriver.SetMoveState(_config.BLEND_IDLE);
+        _animDriver.SetMoveState(_animDriver.BLEND_IDLE);
 
         if (_player._moveDirection.sqrMagnitude > 0.1f)
         {

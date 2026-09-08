@@ -12,7 +12,7 @@ using UnityEngine;
 
 internal class SprintState : BaseState
 {
-    public SprintState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
+    public SprintState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats stats) : base(player, ani, stats)
     {
     }
 
@@ -29,8 +29,8 @@ internal class SprintState : BaseState
         {
             _player._stateMachine.ChangeState<IdleState>();
         }
-        _animDriver.SetMoveState(_config.BLEND_Sprint);
-        float currentSpeed = _config.sprintSpeed;
+        _animDriver.SetMoveState(_animDriver.BLEND_Sprint);
+        float currentSpeed = _stats.WalkSpeed* _stats.SprintSpeedMultiplier;
         Vector3 horizontalVelocity = _player._moveDirection * currentSpeed;
         _player._rb.linearVelocity = new Vector3(horizontalVelocity.x, _player._rb.linearVelocity.y, horizontalVelocity.z);
     }

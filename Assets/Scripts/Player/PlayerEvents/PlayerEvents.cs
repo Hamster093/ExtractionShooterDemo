@@ -28,6 +28,8 @@ public class PlayerEvents
 
     public event Action<int, ItemInstance> OnEquipmentSlotChanged;//装备槽数据变化事件
 
+    public static Action<bool> OnGameplayBlocked;// true=禁用操作, false=恢复操作
+
 
     // ---（仅允许 PlayerController 内部调用）---
 
@@ -45,4 +47,5 @@ public class PlayerEvents
     {
         OnEquipmentSlotChanged?.Invoke(slotIndex, item);
     }
+    internal void TriggerGameplayBlocked(bool blocked)=> OnGameplayBlocked?.Invoke(blocked);
 }

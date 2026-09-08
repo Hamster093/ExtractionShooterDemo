@@ -16,7 +16,6 @@ public class EnemyChaseState : EnemyBaseState
     public override void Enter()
     {
         base.Enter();
-        Debug.Log("[Enemy] Enter Chase");
     }
 
     protected override void OnTick(float deltaTime)
@@ -48,6 +47,5 @@ public class EnemyChaseState : EnemyBaseState
     public override void Exit()
     {
         base.Exit();
-        Debug.Log("[Enemy] Exit Chase");
     }
 }

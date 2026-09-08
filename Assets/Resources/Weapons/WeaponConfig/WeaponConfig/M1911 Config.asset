@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponName: M1911
   maxAmmo: 11
   reloadTime: 1.5
-  damage: 5
+  damage: 6
   fireRate: 0.2
   fireMode: 0
   DefaultAmmo: 1

@@ -43,6 +43,5 @@ public class AK47Weapon : WeaponBase
 
         // 初始化子弹
         bullet.Initialize(_owner, _muzzlePoint.position, fireDirection, _config.damage);
-        // bullet.Speed = 50f; // 如果你有速度参数
     }
 }

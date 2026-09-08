@@ -6,6 +6,7 @@
 	功能：翻滚状态
 *****************************************************/
 
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 
 internal class RollState : BaseState
@@ -14,7 +15,7 @@ internal class RollState : BaseState
     private float _rollTimer;         // 当前翻滚持续时间
     private float _currentSpeed;      // 当前帧的实际速度
 
-    public RollState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
+    public RollState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats stats) : base(player, ani, stats)
     {
     }
 
@@ -43,15 +44,15 @@ internal class RollState : BaseState
     {
         // 防止动画事件丢失导致永远卡在翻滚状态
         _rollTimer += deltaTime;
-        if (_rollTimer >= _config.rollDuration)
+        if (_rollTimer >= _stats.RollDuration)
         {
             HandleRollFinished();
             return;
         }
 
         // 计算翻滚速度
-        float progress = _rollTimer / _config.rollDuration;
-        _currentSpeed = Mathf.Lerp(_config.rollSpeed, 0f, progress);
+        float progress = _rollTimer / _stats.RollDuration;
+        _currentSpeed = Mathf.Lerp(_stats.RollSpeed, 0f, progress);
 
         // 应用位移
         Vector3 velocity = _rollDirection * _currentSpeed/2;

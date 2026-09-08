@@ -7,13 +7,14 @@
 *****************************************************/
 
 using System;
+using System.Diagnostics.Tracing;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour 
 {
     [Header("引用")]
     [SerializeField] private PlayerInputHandler _inputHandler;
-    [SerializeField] private PlayerMovementConfig _config;     // 配置组件
+    [SerializeField] private CharacterStats _stats;     // 配置组件
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
 
@@ -26,7 +27,7 @@ public class PlayerController : MonoBehaviour
     public Vector3 _moveDirection;  //移动方向
     public bool _jumpPressed;
     public bool _isSprinting;
-
+    public bool _isFireEnabled = true;
     public bool IsGrounded { get; private set; }
 
     /// <summary>
@@ -49,17 +50,17 @@ public class PlayerController : MonoBehaviour
         }
 
         // 使用自定义重力，禁用物理默认重力
-        if (_config != null)
+        if (_stats != null)
             _rb.useGravity = false;
         else
             Debug.LogWarning("未找到 PlayerMovementConfig，将使用默认值。");
 
         // 注册状态
-        _stateMachine.RegisterState(new IdleState(this, _animDriver,_config));
-        _stateMachine.RegisterState(new MoveState(this, _animDriver, _config));
-        _stateMachine.RegisterState(new JumpState(this, _animDriver, _config));
-        _stateMachine.RegisterState(new RollState(this, _animDriver, _config));
-        _stateMachine.RegisterState(new SprintState(this, _animDriver, _config));
+        _stateMachine.RegisterState(new IdleState(this, _animDriver, _stats));
+        _stateMachine.RegisterState(new MoveState(this, _animDriver, _stats));
+        _stateMachine.RegisterState(new JumpState(this, _animDriver, _stats));
+        _stateMachine.RegisterState(new RollState(this, _animDriver, _stats));
+        _stateMachine.RegisterState(new SprintState(this, _animDriver, _stats));
 
         // 设置初始状态
         _stateMachine.ChangeState<IdleState>();
@@ -195,6 +196,9 @@ public class PlayerController : MonoBehaviour
         _inputHandler.MeleeWeapon += HandMeleeWeapon;
 
         _weaponSlots.OnHasWeaponChanged += OnHasWeaponChanged;
+
+        PlayerEvents.OnGameplayBlocked += HandleGameplayBlocked;
+
         // 初始化时同步持枪动画
         OnHasWeaponChanged(_weaponSlots.HasAnyWeapon);
     }
@@ -226,6 +230,8 @@ public class PlayerController : MonoBehaviour
 
             _weaponSlots.OnHasWeaponChanged -= OnHasWeaponChanged;
 
+            PlayerEvents.OnGameplayBlocked -= HandleGameplayBlocked;
+
             // 清理当前武器状态
             if (_lastActiveWeapon != null)
             {
@@ -247,7 +253,7 @@ public class PlayerController : MonoBehaviour
         _stateMachine.Tick(Time.fixedDeltaTime);
 
         // 保持当前垂直速度，叠加重力
-        float newVertical = _rb.linearVelocity.y + _config.gravity * Time.fixedDeltaTime;
+        float newVertical = _rb.linearVelocity.y + _stats.Gravity * Time.fixedDeltaTime;
         // 限制最大下落速度
         if (newVertical < -50f) newVertical = -50f;
 
@@ -347,7 +353,10 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandleAttackIntent()
     {
-        CurrentWeapon?.RequestFire(transform.forward);
+        if (_isFireEnabled)
+        {
+            CurrentWeapon?.RequestFire(transform.forward);
+        }  
     }
 
     /// <summary>
@@ -416,7 +425,14 @@ public class PlayerController : MonoBehaviour
 
     private void HandleReserveAmmoChanged(int reserve)
         => PlayerEvents.Instance.TriggerReserveAmmoChanged(reserve);
-
+    /// <summary>
+    /// 打开面板时候禁用开火
+    /// </summary>
+    /// <param name="blocked"></param>
+    private void HandleGameplayBlocked(bool blocked)
+    {
+        _isFireEnabled = !blocked; // blocked=true 时禁用开火
+    }
 
 }
 public enum WeaponSlot { Primary = 0, Secondary = 1, Melee = 2 }

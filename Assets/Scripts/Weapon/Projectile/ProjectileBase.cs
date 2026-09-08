@@ -12,9 +12,9 @@ using UnityEngine.Pool;
 
 public abstract class ProjectileBase : MonoBehaviour
 {
-    [SerializeField] protected float _speed=5f;            //弹速
-    [SerializeField] protected float _lifetime = 5f;    //子弹生命周期
-    [SerializeField] protected int _damage=5;             //伤害
+    [SerializeField] protected float _speed;            //弹速
+    [SerializeField] protected float _lifetime;    //子弹生命周期
+    private int _damage;             //伤害 由枪械传入
     [SerializeField] protected LayerMask _hitLayers;    //命中层
 
     private float _remainingLifetime;  //子弹剩余生命周期
@@ -84,14 +84,20 @@ public abstract class ProjectileBase : MonoBehaviour
                 return;
             }
 
-            // 结算伤害
-            if (hit.collider.TryGetComponent<IDamageable>(out var damageable))
+            //结算伤害
+            IDamageable damageable = hit.collider.GetComponent<IDamageable>();
+            if (damageable == null)
+            {
+                damageable = hit.collider.GetComponentInChildren<IDamageable>();
+            }
+
+            if (damageable != null)
             {
                 damageable.TakeDamage(_damage, Owner);
             }
             else
             {
-                Debug.LogWarning("没有在当前collider挂载的父物体上获取到IDamageable脚本");
+                Debug.LogWarning("没有获取到IDamageable脚本");
             }
 
                 // 命中后立即销毁，不再继续移动

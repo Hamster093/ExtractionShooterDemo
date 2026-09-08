@@ -36,20 +36,12 @@ public class M1911Weapon : WeaponBase
 
     protected override void PerformFire(Vector3 fireDirection)
     {
-        ProjectileBase bullet;
+        // 从对象池获取子弹
+        ProjectileBase bullet = _bulletPool.Get();
+        bullet.Pool = _bulletPool;
 
-        if (_bulletPool != null)
-        {
-            bullet = _bulletPool.Get();
-            bullet.Pool = _bulletPool;
-        }
-        else
-        bullet = Instantiate(_bulletPrefab);
-
-        bullet.Owner = _owner; // 标记伤害归属
-        bullet.Direction = fireDirection;
-        bullet.transform.position = _muzzlePoint.position;
-        bullet.transform.rotation = Quaternion.LookRotation(fireDirection);
+        // 初始化子弹
+        bullet.Initialize(_owner, _muzzlePoint.position, fireDirection, _config.damage);
 
     }
 }

@@ -18,6 +18,13 @@ public class PlayerAnimatorDriver : MonoBehaviour
     private int _sprintBoolHash;   //冲刺
     private int _rollTriggerHash;  //翻滚
 
+    [Tooltip("待机混合树值")]
+    public float BLEND_IDLE = 0f;
+    [Tooltip("走路混合树值 (s)")]
+    public float BLEND_WALK = 1f;
+    [Tooltip("奔跑混合树值 (s)")]
+    public float BLEND_Sprint = 2f;
+
     public event Action OnRollAnimationCompleted;
 
     /// <summary>

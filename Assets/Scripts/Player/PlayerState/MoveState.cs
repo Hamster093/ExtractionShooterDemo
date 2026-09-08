@@ -6,11 +6,12 @@
 	功能：移动状态
 *****************************************************/
 
+using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
 
 internal class MoveState : BaseState
 {
-    public MoveState(PlayerController player, PlayerAnimatorDriver ani, PlayerMovementConfig config) : base(player, ani, config)
+    public MoveState(PlayerController player, PlayerAnimatorDriver ani, CharacterStats stats) : base(player, ani, stats)
     {
     }
 
@@ -26,12 +27,12 @@ internal class MoveState : BaseState
             _player._stateMachine.ChangeState<IdleState>();
         }
 
-        float currentSpeed = _config.walkSpeed;
+        float currentSpeed = _stats.WalkSpeed;
         Vector3 horizontalVelocity = _player._moveDirection * currentSpeed;
         _player._rb.linearVelocity = new Vector3(horizontalVelocity.x, _player._rb.linearVelocity.y, horizontalVelocity.z);
 
         bool hasMoveInput = _player._moveDirection.sqrMagnitude > 0.01f;
-        _animDriver.SetMoveState(_config.BLEND_WALK);
+        _animDriver.SetMoveState(_animDriver.BLEND_WALK);
     }
     public override void Exit()
     {
