@@ -13,6 +13,8 @@ public class EnemyController : MonoBehaviour
 {
     [Header("=== 引用 ===")]
     public Transform player;
+    public CharacterHealth _health;
+    public Collider _collider;
 
     [Header("=== 移动参数 ===")]
     public float moveSpeed = 3f;
@@ -46,6 +48,7 @@ public class EnemyController : MonoBehaviour
 
     private EnemyStateMachine _stateMachine;
     private CharacterController _characterController;
+    private bool isDir=false;
 
     private void Awake()
     {
@@ -70,7 +73,17 @@ public class EnemyController : MonoBehaviour
         collectionCheck: Application.isEditor || Debug.isDebugBuild,
         defaultCapacity: _poolDefaultCapacity,
         maxSize: _poolMaxSize
-    );
+        );
+    }
+
+    private void OnEnable()
+    {
+        _health.OnDeath += HandleDeath;
+    }
+
+    private void OnDisable()
+    {
+        _health.OnDeath -= HandleDeath;
     }
 
     private void Start()
@@ -129,6 +142,7 @@ public class EnemyController : MonoBehaviour
     /// </summary>
     public void MoveTowardsPlayer()
     {
+        if(isDir) return;
         if (player == null || _characterController == null) return;
 
         Vector3 direction = (player.position - transform.position).normalized;
@@ -169,8 +183,8 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        // 初始化子弹（位置、方向、伤害、来源）
-        bullet.Initialize(gameObject, spawnPoint.position, direction, bulletDamage);
+        // 初始化子弹（来源、方向、位置、伤害）
+        bullet.Initialize(gameObject, spawnPoint.position, direction, bulletDamage); 
 
         // 重置攻击冷却
         TimeSinceLastAttack = 0f;
@@ -185,5 +199,38 @@ public class EnemyController : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player")) IsPlayerInRange = false;
+    }
+
+    /// <summary>
+    /// 死亡事件回调
+    /// </summary>
+    private void HandleDeath()
+    {
+        //======立即切断所有交互======
+        // 禁用移动/攻击输入
+        isDir=true;
+
+        var sc = GetComponent<SphereCollider>();
+        if (sc != null) sc.enabled = false;
+
+        // 冻结物理 & 关闭碰撞
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
+        _collider.enabled = false;
+
+
+        // ====== 表现层 ======
+        // 播放死亡动画 todo
+        //GetComponent<Animator>()?.SetTrigger("Die");
+
+        // 全局广播（UI、音效）
+        PlayerEvents.Instance?.TriggerPlayerDied(gameObject);
+
+        Destroy(gameObject);
+        //生成宝箱
+        gameObject.GetComponentInChildren<EnemyLootData>().DropLoot();
+        enabled = false;
+
     }
 }

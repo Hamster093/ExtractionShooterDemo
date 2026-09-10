@@ -251,18 +251,20 @@ public class DragManager : MonoBehaviour
                         target.owner.RefreshSlot(target.index);
                 }
 
+                //  触发事件顺序：先目标槽、后源槽
+                //  槽位间移动时，目标槽先登记物品并复用已有武器实例，源槽的 null 事件
+                //  才能在销毁判定（实例不再被任何栏位引用）时正确保留被挪走的武器
+                if (targetHandler is EquipmentSlotHandler)
+                {
+                    var newDstItem = target.owner.Container.GetItem(target.index);
+                    PlayerEvents.Instance.TriggerEquipmentSlotChanged(target.index, newDstItem);
+                }
+
                 //  触发事件：源槽位如果是装备槽
                 if (sourceHandler is EquipmentSlotHandler)
                 {
                     var newSrcItem = sourceOwner.Container.GetItem(srcIdx);
                     PlayerEvents.Instance.TriggerEquipmentSlotChanged(srcIdx, newSrcItem);
-                }
-
-                //  触发事件：目标槽位如果是装备槽
-                if (targetHandler is EquipmentSlotHandler)
-                {
-                    var newDstItem = target.owner.Container.GetItem(target.index);
-                    PlayerEvents.Instance.TriggerEquipmentSlotChanged(target.index, newDstItem);
                 }
             }
         }

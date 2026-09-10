@@ -20,21 +20,30 @@ public class LootPickup : MonoBehaviour
     [Header("引用")]
     [SerializeField] private GameObject _buttonRoot;   // 按钮根节点（控制显隐）
     [SerializeField] private Button _lootButton;      // 战利品按钮
+    [SerializeField] private ChestManager chest;      // 战利品按钮
 
     [Header("识别设置")]
     [SerializeField] private string _playerTag = "Player"; // 玩家Tag
     [SerializeField] private Key _interactKey = Key.F;    // 交互快捷键
+
+    private ItemContainer _container;
+    private bool _dataSent = false;//是否已经发送数据到UI
+
 
     /// <summary>
     /// 玩家当前是否在交互范围内
     /// </summary>
     public bool PlayerNearby { get; private set; }
 
+    public void SetContainer(ItemContainer container)
+    {
+        _container = container;
+        _dataSent = false;
+    }
+
     private void Awake()
     {
-        if (_lootButton != null)
-            _lootButton.onClick.AddListener(OnLootButtonClicked);
-
+        _lootButton.onClick.AddListener(OnLootButtonClicked);
         SetButtonVisible(false);
     }
 
@@ -43,8 +52,6 @@ public class LootPickup : MonoBehaviour
         // F 键联动：仅在玩家处于范围内时生效，触发与按钮点击相同的事件
         if (PlayerNearby && Keyboard.current != null && Keyboard.current[_interactKey].wasPressedThisFrame)
             _lootButton?.onClick.Invoke();
-
-        //todo 打开背包界面和战利品界面
     }
 
     private void OnTriggerEnter(Collider other)
@@ -79,7 +86,17 @@ public class LootPickup : MonoBehaviour
     /// </summary>
     private void OnLootButtonClicked()
     {
-        Debug.Log("[LootPickup] 玩家打开了战利品：" + gameObject.name);
-        UIController.Instance.OpenLoot();
+
+        if (!_dataSent)
+        {
+            // 首次打开：把容器交给 UIController，由 LootPanel 在 OnOpen 时绑定
+            UIController.Instance.OpenLoot(_container);
+            _dataSent = true;
+        }
+        else
+        {
+            // 再次打开：不传容器，保留玩家已取走物品后的状态
+            UIController.Instance.OpenLoot();
+        }
     }
 }

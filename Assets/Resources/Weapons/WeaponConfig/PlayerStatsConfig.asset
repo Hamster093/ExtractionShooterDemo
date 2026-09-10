@@ -12,7 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85282779eb749a547b4fab4e5c7c566a, type: 3}
   m_Name: PlayerStatsConfig
   m_EditorClassIdentifier: 
-  maxHealth: 100
+  maxHealth: 15
   armor: 5
-  moveSpeed: 5
   armorDamageReduction: 0.5
+  walkSpeed: 5
+  sprintSpeedMultiplier: 1.6
+  jumpForce: 8
+  gravity: -20
+  rollSpeed: 12
+  rollDuration: 0.6

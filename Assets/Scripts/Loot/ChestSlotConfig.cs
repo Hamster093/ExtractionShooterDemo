@@ -21,4 +21,6 @@ public struct ChestSlotConfig
         this.itemId = itemId;
         this.amount = amount;
     }
+
+    public bool IsValid => itemId > 0 && amount > 0;
 }

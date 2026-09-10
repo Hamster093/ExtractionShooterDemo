@@ -240,5 +240,13 @@ public class PlayerInputHandler : MonoBehaviour
         _isHolding = false;
         _actionResolved = false;
     }
+    /// <summary>
+    /// 外部关闭输入方法
+    /// </summary>
+    public void Disable()
+    {
+        if (_playerActions != null)
+            _playerActions.Disable();
+    }
 
 }

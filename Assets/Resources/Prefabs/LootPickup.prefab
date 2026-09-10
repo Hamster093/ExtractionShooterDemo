@@ -70,6 +70,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _buttonRoot: {fileID: 4809674898069841036}
   _lootButton: {fileID: 5974726685219049189}
+  chest: {fileID: 0}
   _playerTag: Player
   _interactKey: 20
 --- !u!1 &3769618964889502712

@@ -49,17 +49,17 @@ public static class ItemRegistry
             foreach (var item in dataList.Items)
             {
                 if (_items.ContainsKey(item.id))
-                    Debug.LogError($"[ItemRegistry] ⚠️ 重复ID: {item.id} ({item.itemName})");
+                    Debug.LogError($"[ItemRegistry]  重复ID: {item.id} ({item.itemName})");
                 else
                     _items[item.id] = item;
             }
 
             _isInitialized = true;
-            Debug.Log($"[ItemRegistry] ✅ 成功加载 {_items.Count} 个物品");
+            Debug.Log($"[ItemRegistry]  成功加载 {_items.Count} 个物品");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[ItemRegistry] ❌ XML 解析失败: {e.Message}");
+            Debug.LogError($"[ItemRegistry]  XML 解析失败: {e.Message}");
         }
     }
 
@@ -84,17 +84,17 @@ public static class ItemRegistry
             foreach (var item in dataList.Items)
             {
                 if (_items.ContainsKey(item.id))
-                    Debug.LogError($"[ItemRegistry] ⚠️ 重复ID: {item.id} ({item.itemName})");
+                    Debug.LogError($"[ItemRegistry]  重复ID: {item.id} ({item.itemName})");
                 else
                     _items[item.id] = item;
             }
 
             _isInitialized = true;
-            Debug.Log($"[ItemRegistry] ✅ 成功加载 {_items.Count} 个物品");
+            Debug.Log($"[ItemRegistry]  成功加载 {_items.Count} 个物品");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[ItemRegistry] ❌ XML 解析失败: {e.Message}");
+            Debug.LogError($"[ItemRegistry]  XML 解析失败: {e.Message}");
         }
     }
 

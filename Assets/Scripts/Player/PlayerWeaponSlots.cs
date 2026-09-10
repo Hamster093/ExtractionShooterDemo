@@ -7,6 +7,7 @@
 *****************************************************/
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -65,7 +66,12 @@ public class PlayerWeaponSlots
      private WeaponBase[] _weapons = new WeaponBase[SlotCount];
 
     /// <summary>
-    /// 已装备的武器数量（用于UI显示）
+    /// 物品实例 → 武器实例 映射：同一件物品在栏位间挪动时复用同一把武器实例
+    /// </summary>
+    private readonly Dictionary<ItemInstance, WeaponBase> _itemWeapons = new();
+
+    /// <summary>
+    /// 已装备的武器数量
     /// </summary>
     private int _equippedCount;
     /// <summary>
@@ -127,16 +133,85 @@ public class PlayerWeaponSlots
         if (oldWeapon != null && weapon == null) _equippedCount--;
         else if (oldWeapon == null && weapon != null) _equippedCount++;
 
+        // 卸下时把 GameObject 立刻隐藏
+        if (weapon == null && oldWeapon != null)
+        {
+            oldWeapon.gameObject.SetActive(false);
+
+            // 若该武器实例已不再被任何栏位引用（物品被拖出装备区），立即销毁并解除映射
+            if (!IsWeaponReferenced(oldWeapon))
+                DestroyWeapon(oldWeapon);
+        }
+
         // 触发武器持有状态变化事件
         // 没有装备武器/装备一把武器
         if (_equippedCount == 0 || (_equippedCount == 1 && oldWeapon == null))
             //传出bool值
             OnHasWeaponChanged?.Invoke(HasAnyWeapon);
 
-
         // 如果设置的是当前激活栏位，触发事件通知UI等订阅方
         if (slotIndex == _activeSlotIndex)
+        {
             OnSlotChanged?.Invoke(_activeSlotIndex, weapon);
+
+            // 激活栏位被清空且还有其他武器时，自动就近切换到有武器的栏位，
+            // 避免拖动/卸下后手里没枪（仅剩一把武器时由 PickupWeapon 的自动切换补上手）
+            if (weapon == null && _equippedCount > 0)
+            {
+                int fallback = FindNextWeaponSlot(slotIndex);
+                if (fallback >= 0) SwitchTo(fallback);
+            }
+        }
+        RefreshWeaponVisibility();
+    }
+
+    /// <summary>
+    /// 从指定栏位向后查找第一个有武器的栏位，找不到再从头找
+    /// </summary>
+    /// <param name="startIndex">起始栏位索引</param>
+    /// <returns>有武器的栏位索引，全部为空时返回 -1</returns>
+    private int FindNextWeaponSlot(int startIndex)
+    {
+        for (int i = 1; i <= SlotCount; i++)
+        {
+            int idx = (startIndex + i) % SlotCount;
+            if (_weapons[idx] != null) return idx;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// 检查武器实例是否仍被任一栏位引用
+    /// </summary>
+    private bool IsWeaponReferenced(WeaponBase weapon)
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_weapons[i] == weapon) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 销毁武器实例并解除物品映射（物品被彻底移出装备区时调用）
+    /// </summary>
+    private void DestroyWeapon(WeaponBase weapon)
+    {
+        if (weapon == null) return;
+
+        // 解除所有指向该实例的物品映射
+        var keysToRemove = new List<ItemInstance>();
+        foreach (var pair in _itemWeapons)
+        {
+            if (pair.Value == weapon) keysToRemove.Add(pair.Key);
+        }
+        foreach (var key in keysToRemove)
+        {
+            _itemWeapons.Remove(key);
+        }
+
+        if (weapon.gameObject != null)
+            UnityEngine.Object.Destroy(weapon.gameObject);
     }
 
     /// <summary>
@@ -150,6 +225,8 @@ public class PlayerWeaponSlots
 
         _activeSlotIndex = slotIndex;
         OnSlotChanged?.Invoke(_activeSlotIndex, ActiveWeapon);
+
+        RefreshWeaponVisibility();
     }
 
     /// <summary>
@@ -158,6 +235,7 @@ public class PlayerWeaponSlots
     public void SwitchNext()
     {
         SwitchTo((_activeSlotIndex + 1) % SlotCount);
+        RefreshWeaponVisibility();
     }
 
     /// <summary>
@@ -166,14 +244,29 @@ public class PlayerWeaponSlots
     public void ClearAll()
     {
         bool hadWeapon = _equippedCount > 0;
-        for (int i = 0; i < SlotCount; i++) _weapons[i] = null;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_weapons[i] != null)
+            {
+                _weapons[i].gameObject.SetActive(false);   // ★ 先隐藏
+                UnityEngine.Object.Destroy(_weapons[i].gameObject);    // ★ 销毁实例，防止泄漏
+            }
+            _weapons[i] = null;
+        }
+        _itemWeapons.Clear();
 
         _equippedCount = 0;
         _activeSlotIndex = 0;
 
         if (hadWeapon) OnHasWeaponChanged?.Invoke(false);
         OnSlotChanged?.Invoke(0, null);
+        RefreshWeaponVisibility();
     }
+    /// <summary>
+    /// 处理设备栏位变更
+    /// </summary>
+    /// <param name="slotIndex"></param>
+    /// <param name="item"></param>
     private void HandleEquipmentSlotChanged(int slotIndex, ItemInstance item)
     {
         if (item == null)
@@ -183,14 +276,38 @@ public class PlayerWeaponSlots
             return;
         }
 
-        // 根据物品ID创建武器实例（使用工厂类）
-        WeaponBase weapon = WeaponFactory.CreateWeapon(item.itemID);
-        if (weapon == null)
+        // 复用已登记的武器实例：同一物品在栏位之间挪动时不再新建武器
+        if (!_itemWeapons.TryGetValue(item, out var weapon))
         {
-            return;
+            weapon = WeaponFactory.CreateWeapon(item.itemID);
+            if (weapon == null)
+            {
+                Debug.LogWarning($"[PlayerWeaponSlots] 武器创建失败 itemID={item.itemID}");
+                return;
+            }
+            _itemWeapons[item] = weapon;
         }
 
         // 装备到指定栏位
         _playerController.PickupWeapon(weapon, slotIndex);
+
+        RefreshWeaponVisibility();
+    }
+    /// <summary>
+    /// 只显示当前激活栏位的武器，其他栏位隐藏
+    /// </summary>
+    private void RefreshWeaponVisibility()
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            var w = _weapons[i];
+            if (w == null) continue;
+
+            bool shouldShow = (i == _activeSlotIndex);
+
+            // WeaponBase 必须是 MonoBehaviour 才有 gameObject
+            if (w.gameObject.activeSelf != shouldShow)
+                w.gameObject.SetActive(shouldShow);
+        }
     }
 }

@@ -87,9 +87,6 @@ public abstract class WeaponBase : MonoBehaviour
         {
             _cachedBackpack.OnSlotChanged += OnInventoryItemChanged;
 
-            //// 首次初始化时补充初始备弹 后续删除 绑定弹药实体
-            //if (_cachedBackpack.GetItemCount(_config.DefaultAmmo) == 0)
-            //    _cachedBackpack.AddItem(_config.DefaultAmmo, _config.initialReserveAmmo);
         }
         else
         {

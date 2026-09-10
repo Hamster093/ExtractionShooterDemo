@@ -23,8 +23,9 @@ public class ChestManager : MonoBehaviour,ISlotOwner
     public ItemContainer Container => _container;
     IItemContainer ISlotOwner.Container => Container;
 
-    //是否初始化
-    private bool _isInitialized = false;
+    [Tooltip("是否已经绑定了容器")]
+    public bool IsBound => _container != null;
+
     //格子图片是否已收集
     private bool _slotsReady = false;
 
@@ -33,61 +34,44 @@ public class ChestManager : MonoBehaviour,ISlotOwner
         EnsureInitialized();
     }
 
-    void Start()
+    /// <summary>
+    /// 把一个外部容器绑定到本 UI，会替换旧容器并刷新全部格子。
+    /// 同一个容器重复绑定只做刷新，不会重复订阅。
+    /// </summary>
+    public void BindContainer(ItemContainer container)
     {
-        //test。。。。。。。。。。
-        // 新代码：创建 ItemInstance 实例，传入 (物品ID, 数量)
-        // 装备栏不填充测试物品，只有宝箱用测试数据
-        if (!isEquipmentGrid&&!IsBack)
+        EnsureInitialized();
+
+        if (_container == container)
         {
-            _container.SetItem(0, new ItemInstance(1, 90));  // ID=1 的物品，5个
-            _container.SetItem(1, new ItemInstance(2, 1));  // ID=2 的物品，1个
-            _container.SetItem(2, new ItemInstance(4, 1));  // ID=2 的物品，1个
-            _container.SetItem(3, new ItemInstance(3, 20)); // ID=3 的物品，20个
+            RefreshUI();
+            return;
         }
-        //test.。。。。。。。。。
+
+        // 解绑旧容器
+        if (_container != null)
+            _container.OnSlotChanged -= RefreshSlot;
+
+        _container = container;
+
+        // 订阅新容器
+        if (_container != null)
+            _container.OnSlotChanged += RefreshSlot;
+
         RefreshUI();
     }
 
     /// <summary>
-    /// 外部调用此方法来初始化宝箱内容
-    /// 应在 Awake 之后、UI 刷新之前调用
+    /// 解绑容器并清空 UI（关闭面板、对象池归还前调用）
     /// </summary>
-    public void Init(List<ChestSlotConfig> items)
+    public void UnbindContainer()
     {
-        if (_isInitialized)
-        {
-            Debug.LogWarning($"[ChestManager] {gameObject.name} 已初始化，请勿重复调用 Init！", this);
-            return;
-        }
+        if (_container != null)
+            _container.OnSlotChanged -= RefreshSlot;
 
-        // 确保容器已创建（Awake 中已创建，这里做兜底）
-        if (_container == null)
-            _container = new ItemContainer(slots.Count);
-
-        // 清空旧数据（防止对象池复用时残留）
-        _container.Clear();
-
-        // 按配置填充物品
-        if (items != null)
-        {
-            for (int i = 0; i < items.Count && i < _container.SlotCount; i++)
-            {
-                var config = items[i];
-                if (config.itemId > 0 && config.amount > 0)
-                {
-                    _container.SetItem(i, new ItemInstance(config.itemId, config.amount));
-                }
-            }
-        }
-
-        _container.OnSlotChanged -= RefreshSlot; 
-        _container.OnSlotChanged += RefreshSlot;
-
-        _isInitialized = true;
-        RefreshUI();
+        _container = null;
+        ClearUI();
     }
-
 
     public void RefreshSlot(int index)
     {
@@ -108,14 +92,26 @@ public class ChestManager : MonoBehaviour,ISlotOwner
     /// </summary>
     public void RefreshUI()
     {
-        if (_container == null || slots == null) return;
+        if (slots == null) return;
 
         int count = Mathf.Min(slots.Count, _container.SlotCount);
         for (int i = 0; i < count; i++)
         {
             RefreshSlot(i);
         }
+        for (int i = count; i < slots.Count; i++)
+            slots[i]?.SetItem(null);
     }
+    /// <summary>
+    /// 清空
+    /// </summary>
+    private void ClearUI()
+    {
+        if (slots == null) return;
+        foreach (var s in slots)
+            s?.SetItem(null);
+    }
+
     /// <summary>
     /// 收集格子图片并创建容器（幂等）。
     /// 面板初始为 inactive 时 Unity 不会调用 Awake，DragManager 注册拖拽前需手动调用此方法。
@@ -152,7 +148,6 @@ public class ChestManager : MonoBehaviour,ISlotOwner
                     attached++;
                 }
             }
-            Debug.Log($"[ChestManager] {gameObject.name} 装备栏初始化：共 {slots.Count} 格，本次自动挂载 EquipmentSlotHandler {attached} 个", this);
         }
     }
 

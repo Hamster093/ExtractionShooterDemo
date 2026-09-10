@@ -13,7 +13,6 @@ public class EnemyIdleState : EnemyBaseState
     public override void Enter()
     {
         base.Enter();
-        Debug.Log("[Enemy] Enter Idle");
     }
 
     protected override void OnTick(float deltaTime)

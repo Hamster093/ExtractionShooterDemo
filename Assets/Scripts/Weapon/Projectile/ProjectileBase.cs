@@ -97,7 +97,7 @@ public abstract class ProjectileBase : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("没有获取到IDamageable脚本");
+                //Debug.LogWarning("命中建筑 没有获取到IDamageable脚本");
             }
 
                 // 命中后立即销毁，不再继续移动

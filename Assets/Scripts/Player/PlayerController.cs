@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private CharacterStats _stats;     // 配置组件
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
+    [SerializeField] private CharacterHealth _health;
 
     private PlayerWeaponSlots _weaponSlots;  //武器栏位
     private WeaponBase _lastActiveWeapon;//最后激活的武器
@@ -84,10 +85,10 @@ public class PlayerController : MonoBehaviour
 
         //  当前激活栏位没有武器时，自动切换到新装备的栏位
         //  （SwitchTo 触发 OnSlotChanged → 武器初始化/弹药UI/HUD 选中特效整条链自动刷新）
-        bool autoSwitched = false;
+        //bool autoSwitched = false;
         if (_weaponSlots.ActiveWeapon == null)
         {
-            autoSwitched = true;
+           // autoSwitched = true;
             _weaponSlots.SwitchTo(targetSlot);
         }
 
@@ -101,8 +102,6 @@ public class PlayerController : MonoBehaviour
         {
             PlayerEvents.Instance.TriggerWeaponChanged(targetSlot, weapon);
         }
-
-        Debug.Log($"[PlayerController] 拾取武器 {weapon.name} 到栏位 {targetSlot} | 当前激活栏位 {_weaponSlots.ActiveSlotIndex} | 自动切换：{(autoSwitched ? "是" : "否(激活栏位已有武器)")}");
     }
 
     /// <summary>
@@ -196,6 +195,7 @@ public class PlayerController : MonoBehaviour
         _inputHandler.MeleeWeapon += HandMeleeWeapon;
 
         _weaponSlots.OnHasWeaponChanged += OnHasWeaponChanged;
+        _health.OnDeath += HandleDeath;//死亡事件
 
         PlayerEvents.OnGameplayBlocked += HandleGameplayBlocked;
 
@@ -229,6 +229,7 @@ public class PlayerController : MonoBehaviour
             _inputHandler.MeleeWeapon -= HandMeleeWeapon;
 
             _weaponSlots.OnHasWeaponChanged -= OnHasWeaponChanged;
+            _health.OnDeath -= HandleDeath;
 
             PlayerEvents.OnGameplayBlocked -= HandleGameplayBlocked;
 
@@ -432,6 +433,34 @@ public class PlayerController : MonoBehaviour
     private void HandleGameplayBlocked(bool blocked)
     {
         _isFireEnabled = !blocked; // blocked=true 时禁用开火
+    }
+    /// <summary>
+    /// 死亡事件回调
+    /// </summary>
+    private void HandleDeath()
+    {
+        //======立即切断所有交互======
+
+        //关闭视角跟随鼠标
+        AimFollowEnabled(false);
+        // 禁用移动/攻击输入
+        _inputHandler.Disable();
+
+        // 冻结物理 & 关闭碰撞
+        if (_rb != null) _rb.isKinematic = true;
+
+        var col = GetComponent<Collider>();
+        if (col != null) col.enabled = false;
+
+
+        // ====== 表现层 ======
+        // 播放死亡动画
+        //GetComponent<Animator>()?.SetTrigger("Die");
+
+        // 全局广播（UI、音效）
+        PlayerEvents.Instance?.TriggerPlayerDied(gameObject);
+
+        enabled = false;
     }
 
 }

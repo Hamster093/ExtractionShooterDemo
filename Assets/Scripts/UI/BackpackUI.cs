@@ -69,7 +69,6 @@ public class BackpackUI : MonoBehaviour, ISlotOwner
                 _slotImages.AddRange(children);
         }
 
-        Debug.Log($"[BackpackUI] {gameObject.name} 收集到格子: {_slotImages.Count}");
     }
 
     /// <summary>
@@ -107,7 +106,6 @@ public class BackpackUI : MonoBehaviour, ISlotOwner
         // 绑定成功后全量刷新一次，保证面板打开时显示最新数据
         RefreshUI();
 
-        Debug.Log("[BackpackUI] 背包数据绑定成功");
     }
 
     /// <summary>

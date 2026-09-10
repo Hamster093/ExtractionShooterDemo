@@ -15,6 +15,7 @@ public class WeaponHUDPanel : BaseUIPanel
     [SerializeField] private GameObject weaponSprit1; // 1号武器选中特效
     [SerializeField] private GameObject weaponSprit2; // 2号武器选中特效
     [SerializeField] private GameObject meleeWeapon; // 近战武器选中特效
+    [SerializeField] private Image[] images; // 道具栏位图片数组
 
     [Header("弹药UI设置")]
     [SerializeField] private Text ammoText; // 弹药文本
@@ -48,13 +49,33 @@ public class WeaponHUDPanel : BaseUIPanel
         base.OnClose();
     }
     /// <summary>
-    /// 
+    /// 武器切换时
     /// </summary>
     /// <param name="slotIndex"></param>
     /// <param name="weapon"></param>
     private void OnWeaponChanged(int slotIndex, WeaponBase weapon)
     {
+        //武器选中特效
         SelectedWeaponUI(slotIndex + 1);
+
+        if (images == null || slotIndex < 0 || slotIndex >= images.Length) return;
+        var c = images[slotIndex].color;
+        if (weapon == null)
+        {
+            // 空栏位：清空该栏位的武器图标，显示为空
+            images[slotIndex].sprite = null;
+            c.a = 0f;
+            images[slotIndex].color = c;
+            return;
+        }
+
+        //修改HUD图片显示
+        Sprite sprite = ResourceManager.LoadUISprite(weapon.Config.weaponName);
+        images[slotIndex].sprite = sprite;       
+        c.a = 1f;
+        images[slotIndex].color = c;
+        return;
+
     }
 
 

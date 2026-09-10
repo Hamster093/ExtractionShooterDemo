@@ -44,6 +44,7 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     private void Awake()
     {
         _stats = GetComponent<CharacterStats>();
+
     }
 
     private void Start()
@@ -122,9 +123,5 @@ public class CharacterHealth : MonoBehaviour, IDamageable
         Debug.Log($"[{gameObject.name}] 被 {attacker?.name} 击杀！");
 
         OnDeath?.Invoke();
-
-        // TODO: 播放死亡动画、禁用控制、掉落物品等
-        // GetComponent<Animator>()?.SetTrigger("Die");
-        // GetComponent<PlayerInputHandler>()?.enabled = false;
     }
 }

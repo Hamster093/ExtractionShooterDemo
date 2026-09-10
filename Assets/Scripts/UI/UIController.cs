@@ -189,8 +189,13 @@ public class UIController : MonoBehaviour
     /// <summary>
     /// 打开战利品
     /// </summary>
-    public void OpenLoot()
+    public void OpenLoot(ItemContainer lootContainer = null)
     {
+        if (LootPanel == null) { Debug.LogError("[UIController] 未绑定 LootPanel"); return; }
+
+        if (lootContainer != null)
+            LootPanel.SetPendingContainer(lootContainer);
+
         OpenPanel(LootPanel);
     }
 
