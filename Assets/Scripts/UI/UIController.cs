@@ -19,6 +19,7 @@ public enum UIPriority
     Game = 0,      // 游戏主界面
     Backpack = 10, // 背包
     Loot = 20,     // 战利品
+    Warehouse = 25,// 仓库
     Shop = 30,     // 商店
     Dialog = 40,   // 对话框
     Pause = 100,    // 暂停菜单
@@ -40,6 +41,7 @@ public class UIController : MonoBehaviour
     [SerializeField] private GameObject meleeWeapon; // 近战武器选中特效
     [SerializeField] private BackpackPanel BackpackPanel; // 背包面板
     [SerializeField] private LootPanel LootPanel; // 战利品面板
+    [SerializeField] private WarehousePanel WarehousePanel; // 仓库面板
 
     [Header("弹药UI设置")]
     [SerializeField] private Text ammoText; // 弹药文本
@@ -197,6 +199,24 @@ public class UIController : MonoBehaviour
             LootPanel.SetPendingContainer(lootContainer);
 
         OpenPanel(LootPanel);
+    }
+
+    /// <summary>
+    /// 打开/关闭仓库（打开时联动打开背包，关闭时联动关闭背包）
+    /// </summary>
+    public void OpenWarehouse()
+    {
+        if (WarehousePanel == null) { Debug.LogError("[UIController] 未绑定 WarehousePanel"); return; }
+
+        bool isOpen = _panelStack.Any(panel => panel.Priority == UIPriority.Warehouse);
+        if (isOpen)
+        {
+            ClosePanel(WarehousePanel);
+        }
+        else
+        {
+            OpenPanel(WarehousePanel);
+        }
     }
 
     /// <summary>

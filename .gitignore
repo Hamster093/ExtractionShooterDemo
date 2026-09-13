@@ -119,3 +119,15 @@ Assets/TJGenerators.meta
 Assets/TJGenerators/History.meta
 .codely-cli/
 .codely.packages/
+.codely/
+# Editor 工具脚本（场景/UI 一键生成，不入库）
+/Assets/Editor/
+# URP 自动生成（Built-in 项目，Unity 每次打开自动重建）
+/Assets/DefaultVolumeProfile.asset
+/Assets/DefaultVolumeProfile.asset.meta
+/Assets/UniversalRenderPipelineGlobalSettings.asset
+/Assets/UniversalRenderPipelineGlobalSettings.asset.meta
+/ProjectSettings/URPProjectSettings.asset
+/ProjectSettings/ShaderGraphSettings.asset
+# NuGetForUnity 下载的包（由 NuGet.config / packages.config 自动恢复）
+/Assets/Packages/

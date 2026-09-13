@@ -20,6 +20,9 @@ public class DragManager : MonoBehaviour
     [Tooltip("场景中所有参与拖拽交互的宝箱管理器列表")]
     public List<ChestManager> chests;
 
+    [Tooltip("仓库 UI（绑定 GameService.Warehouse），注册后支持背包↔仓库拖拽")]
+    public WarehouseUI warehouseUI;
+
     // --- 拖拽状态变量 ---
     private bool isDragging = false;          // 当前是否处于拖拽状态
     private ISlotOwner sourceSlotOwner;       // 拖拽起始的宝箱
@@ -92,6 +95,32 @@ public class DragManager : MonoBehaviour
         else
         {
             Debug.LogWarning("[DragManager] 未找到有效的 BackpackUI（无格子），背包格子将无法作为拖拽目标！");
+        }
+
+        // 仓库 UI：与背包同样注册格子，使背包↔仓库拖拽生效
+        if (warehouseUI != null)
+        {
+            var warehouseSlots = warehouseUI.Slots;
+            int warehouseBound = 0;
+            if (warehouseSlots != null)
+            {
+                for (int i = 0; i < warehouseSlots.Count; i++)
+                {
+                    var slot = warehouseSlots[i];
+                    if (slot == null) continue;
+
+                    ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<DefaultSlotHandler>();
+                    if (!_boundSlots.Add(slot)) continue;
+                    _slotInfo[slot] = (warehouseUI, i, handler);
+                    AddEventTriggersToSlot(slot);
+                    warehouseBound++;
+                }
+            }
+            Debug.Log($"[DragManager] 仓库UI「{warehouseUI.gameObject.name}」注册格子 {warehouseBound} 个");
+        }
+        else
+        {
+            Debug.LogWarning("[DragManager] 未绑定 warehouseUI（仓库格子将无法作为拖拽目标）");
         }
 
     }

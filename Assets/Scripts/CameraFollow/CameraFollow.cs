@@ -24,7 +24,7 @@ public class TopDownCameraFollow : MonoBehaviour
         if (target != null)
         {
             smoothPos = new Vector2(target.position.x, target.position.z);
-            transform.position = new Vector3(smoothPos.x, cameraHeight, smoothPos.y);
+            transform.position = new Vector3(smoothPos.x, cameraHeight, smoothPos.y-7);
         }
     }
 
@@ -48,6 +48,6 @@ public class TopDownCameraFollow : MonoBehaviour
             ? targetPos - delta * (deadZone / deltaMag)
             : smoothPos;
 
-        transform.position = new Vector3(renderPos.x, cameraHeight, renderPos.y);
+        transform.position = new Vector3(renderPos.x, cameraHeight, renderPos.y-7);
     }
 }

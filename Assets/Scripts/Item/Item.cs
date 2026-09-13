@@ -63,3 +63,22 @@ public class ItemInstance
     public ItemInstance(int id, int count) { itemID = id; amount = count; }
 }
 
+/// <summary>
+/// 物品槽位存档数据（用于数据库/存档：只记录非空格子的索引+物品ID+数量，列表存储）
+/// </summary>
+[System.Serializable]
+public class ItemSlotSaveData
+{
+    public int slotIndex;   // 槽位索引
+    public int itemID;      // 物品ID
+    public int amount;      // 数量
+
+    public ItemSlotSaveData() { }
+    public ItemSlotSaveData(int index, ItemInstance item)
+    {
+        slotIndex = index;
+        itemID = item.itemID;
+        amount = item.amount;
+    }
+}
+
