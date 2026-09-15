@@ -44,4 +44,25 @@ public class AK47Weapon : WeaponBase
         // 初始化子弹
         bullet.Initialize(_owner, _muzzlePoint.position, fireDirection, _config.damage);
     }
+
+    /// <summary>
+    /// 扩散/后坐力参数统一从 AK47Config 读取（AK47 专属配置管理）
+    /// </summary>
+    private AK47Config Ak => _config as AK47Config;
+
+    protected override float GetMaxSpread() => Ak != null ? Ak.maxSpread : base.GetMaxSpread();
+    protected override float GetSpreadPerShot() => Ak != null ? Ak.spreadPerShot : base.GetSpreadPerShot();
+    protected override float GetSpreadRecoverySpeed() => Ak != null ? Ak.spreadRecoverySpeed : base.GetSpreadRecoverySpeed();
+
+    /// <summary>
+    /// 垂直后坐力：按连发第 N 发查曲线
+    /// </summary>
+    protected override float GetVerticalRecoil(int shotIndex)
+        => Ak != null && Ak.verticalRecoilCurve != null ? Ak.verticalRecoilCurve.Evaluate(shotIndex) : 0f;
+
+    /// <summary>
+    /// 水平后坐力：±随机范围
+    /// </summary>
+    protected override float GetHorizontalRecoilRandom()
+        => Ak != null ? Ak.horizontalRecoilRandom : 0f;
 }

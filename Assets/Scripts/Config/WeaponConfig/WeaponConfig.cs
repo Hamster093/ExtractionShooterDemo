@@ -11,7 +11,7 @@ using UnityEngine;
 public enum FireMode { SemiAuto, FullAuto }//半自动/全自动
 
 [CreateAssetMenu(menuName = "Game/Weapon/Weapon Config")]
-public class WeaponConfig :ScriptableObject
+public class WeaponConfig :ScriptableObject 
 {
     public string weaponName = "New Weapon";
     [Header("基础属性")]

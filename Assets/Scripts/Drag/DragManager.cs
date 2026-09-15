@@ -120,7 +120,7 @@ public class DragManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[DragManager] 未绑定 warehouseUI（仓库格子将无法作为拖拽目标）");
+
         }
 
     }

@@ -27,7 +27,9 @@ public enum UIPriority
 }
 
 /// <summary>
-/// 该类全局唯一，切场景不销毁
+/// 本场景唯一：切场景时旧实例随场景销毁（OnDestroy 置空 Instance），
+/// 新场景实例自动接管并绑定当前场景面板。注意不要与 InventoryService 挂在同一物体上
+/// （InventoryService 的 DontDestroyOnLoad 会把本组件也拖进常驻区，导致旧场景面板引用断链）
 /// </summary>
 public class UIController : MonoBehaviour
 {
@@ -53,10 +55,11 @@ public class UIController : MonoBehaviour
 
     void Awake()
     {
+        // 本场景唯一：切场景时旧实例随场景销毁（OnDestroy 置空 Instance），
+        // 新场景实例自动接管并绑定当前场景面板
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); 
         }
         else
         {
@@ -162,6 +165,8 @@ public class UIController : MonoBehaviour
     {
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
+        // 鼠标隐藏时显示准心（两者互斥）
+        if (crosshair != null) crosshair.SetActive(true);
     }
 
     /// <summary>
@@ -171,6 +176,8 @@ public class UIController : MonoBehaviour
     {
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+        // 鼠标显示时隐藏准心（两者互斥）
+        if (crosshair != null) crosshair.SetActive(false);
     }
 
     /// <summary>
@@ -228,6 +235,11 @@ public class UIController : MonoBehaviour
         bool shouldBlock = _panelStack.Any(p => p is BaseUIPanel basePanel && basePanel.RequireCursor);
         // 广播
         PlayerEvents.Instance.TriggerGameplayBlocked(shouldBlock);
+
+        // 面板打开时相机聚焦回玩家正上方（缓动归位），关闭后恢复鼠标偏移
+        var camFollow = Camera.main != null ? Camera.main.GetComponent<TopDownCameraFollow>() : null;
+        if (camFollow != null)
+            camFollow.SetFocusMode(shouldBlock);
     }
 }
     

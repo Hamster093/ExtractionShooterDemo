@@ -28,8 +28,9 @@ internal class MoveState : BaseState
         }
 
         float currentSpeed = _stats.WalkSpeed;
-        Vector3 horizontalVelocity = _player._moveDirection * currentSpeed;
-        _player._rb.linearVelocity = new Vector3(horizontalVelocity.x, _player._rb.linearVelocity.y, horizontalVelocity.z);
+        Vector3 targetVelocity = _player._moveDirection * currentSpeed;
+        // 指数平滑逼近目标速度，避免 50Hz 物理步进下的速度阶跃
+        _player.SmoothHorizontalVelocity(targetVelocity, deltaTime, _player.MoveAcceleration);
 
         bool hasMoveInput = _player._moveDirection.sqrMagnitude > 0.01f;
         _animDriver.SetMoveState(_animDriver.BLEND_WALK);

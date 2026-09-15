@@ -195,7 +195,7 @@ public class PlayerInputHandler : MonoBehaviour
     /// </summary>
     /// <param name="screenPos"></param>
     /// <returns></returns>
-    private Vector3 GetWorldPointOnGround(Vector2 screenPos)
+    private Vector3 GetWorldPointOnGround(Vector2 screenPos) 
     {
         Ray ray = _mainCamera.ScreenPointToRay(screenPos);
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);

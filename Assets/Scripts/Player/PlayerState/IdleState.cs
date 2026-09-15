@@ -18,11 +18,14 @@ internal class IdleState : BaseState
     public override void Enter()
     {
         base.Enter();
-        _player._rb.linearVelocity = Vector3.zero;
+        // 不再瞬间清零速度，改为 OnTick 中平滑减速，避免玩家骤停导致相机超调回摆
     }
     protected override void OnTick(float deltaTime)
     {
         _animDriver.SetMoveState(_animDriver.BLEND_IDLE);
+
+        // 平滑减速至静止（而非立即清零）
+        _player.SmoothHorizontalVelocity(Vector3.zero, deltaTime, _player.StopDeceleration);
 
         if (_player._moveDirection.sqrMagnitude > 0.1f)
         {

@@ -31,8 +31,9 @@ internal class SprintState : BaseState
         }
         _animDriver.SetMoveState(_animDriver.BLEND_Sprint);
         float currentSpeed = _stats.WalkSpeed* _stats.SprintSpeedMultiplier;
-        Vector3 horizontalVelocity = _player._moveDirection * currentSpeed;
-        _player._rb.linearVelocity = new Vector3(horizontalVelocity.x, _player._rb.linearVelocity.y, horizontalVelocity.z);
+        Vector3 targetVelocity = _player._moveDirection * currentSpeed;
+        // 指数平滑逼近目标速度，避免 50Hz 物理步进下的速度阶跃
+        _player.SmoothHorizontalVelocity(targetVelocity, deltaTime, _player.MoveAcceleration);
     }
     public override void Exit()
     {

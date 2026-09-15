@@ -31,6 +31,12 @@ public abstract class WeaponBase : MonoBehaviour
     private bool _isInitialized;       // 防止重复初始化
     private int _lastReserveAmmo;      //上一次的备弹数量
 
+    // ─── 扩散状态 ───
+    private float _currentSpread;       //当前扩散角度(度)，每发递增、停止射击后恢复
+
+    // ─── 后坐力状态 ───
+    private int _burstCount;            //连发计数(第N发)，松开扳机归零，用于查垂直后坐力曲线
+
     public int CurrentAmmo => _currentAmmo;
     public int MaxAmmo => _config.maxAmmo;
     public bool IsReloading => _isReloading;
@@ -109,6 +115,8 @@ public abstract class WeaponBase : MonoBehaviour
     {
         CancelReload();
         _isFireRequested = false;
+        _burstCount = 0;
+        _currentSpread = 0f;
 
         _animDriver = null;
         _owner = null;
@@ -125,6 +133,7 @@ public abstract class WeaponBase : MonoBehaviour
     {
         CancelReload();
         _isFireRequested = false;
+        _burstCount = 0;
     }
     #endregion
 
@@ -152,11 +161,20 @@ public abstract class WeaponBase : MonoBehaviour
     public void CancelFire()
     {
         _isFireRequested = false;
+        // 松开扳机后坐力连发计数归零（下一轮从第 0 发重新查曲线）
+        _burstCount = 0;
     }
 
 
     public virtual void Tick(float deltaTime)
     {
+        // 未在开火时扩散值恢复（向 0 回落）
+        if (!_isFireRequested && _currentSpread > 0f)
+        {
+            float recovery = GetSpreadRecoverySpeed();
+            _currentSpread = Mathf.Max(0f, _currentSpread - recovery * deltaTime);
+        }
+
         // 全自动连发
         if (_isFireRequested && Time.time >= _nextFireTime)
         {
@@ -193,13 +211,19 @@ public abstract class WeaponBase : MonoBehaviour
         // 扣除弹药
         _currentAmmo--;
 
+        // 每发射击后扩散递增（封顶 maxSpread）
+        _currentSpread = Mathf.Min(GetMaxSpread(), _currentSpread + GetSpreadPerShot());
+
+        // 后坐力连发计数递增（第一发为第 0 发，查曲线起点）
+        _burstCount++;
+
         // 驱动动画
         _animDriver.SetTrigger("Fire");
 
         // 通知UI刷新弹匣
         OnAmmoChanged?.Invoke(_currentAmmo, _config.maxAmmo);
 
-        // 执行子类具体射击逻辑
+        // 执行子类具体射击逻辑（方向已含扩散偏移）
         PerformFire(fireDirection);
 
         // 设定下次可开火时间
@@ -332,8 +356,73 @@ public abstract class WeaponBase : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return transform.forward;
 
+        // ① 后坐力：垂直按连发计数查曲线上抬 + 水平随机偏移
+        float verticalRecoil = GetVerticalRecoil(_burstCount);
+        float horizontalRecoil = GetHorizontalRecoilRandom();
+        if (verticalRecoil > 0.01f || horizontalRecoil > 0.01f)
+            direction = ApplyRecoil(direction, verticalRecoil, horizontalRecoil);
+
+        // ② 扩散：在 direction 为轴、_currentSpread 度内的圆锥里随机偏移
+        if (_currentSpread > 0.01f)
+            direction = ApplySpread(direction, _currentSpread);
+
         return direction;
     }
+
+    /// <summary>
+    /// 后坐力偏移：垂直上抬 verticalDeg 度 + 水平随机 ±horizontalDeg 度
+    /// </summary>
+    private Vector3 ApplyRecoil(Vector3 dir, float verticalDeg, float horizontalDeg)
+    {
+        // 构造以 dir 为 z 轴的局部坐标系（水平右轴）
+        Vector3 right = Vector3.Cross(Vector3.up, dir).normalized;
+        if (right.sqrMagnitude < 0.001f)
+            right = Vector3.right;
+
+        // 水平后坐力：绕世界 Y 轴随机左右偏转
+        float yaw = UnityEngine.Random.Range(-horizontalDeg, horizontalDeg);
+        dir = Quaternion.AngleAxis(yaw, Vector3.up) * dir;
+
+        // 垂直后坐力：绕水平右轴向上抬
+        if (verticalDeg > 0.01f)
+            dir = Quaternion.AngleAxis(verticalDeg, right) * dir;
+
+        return dir.normalized;
+    }
+
+    /// <summary>
+    /// 在方向为轴、spreadAngle 度内的圆锥中生成随机偏移方向（均匀圆锥分布）
+    /// </summary>
+    private Vector3 ApplySpread(Vector3 dir, float spreadAngle)
+    {
+        // 构造以 dir 为 z 轴的局部坐标系
+        Vector3 right = Vector3.Cross(Vector3.up, dir).normalized;
+        if (right.sqrMagnitude < 0.001f)
+            right = Vector3.right;
+        Vector3 up = Vector3.Cross(dir, right).normalized;
+
+        // 圆锥内均匀采样：角度在 [0, spreadAngle] 内，方位角 [0, 2π) 随机
+        float maxAngleRad = spreadAngle * Mathf.Deg2Rad;
+        float angle = Mathf.Sqrt(UnityEngine.Random.value) * maxAngleRad; // sqrt 使锥面均匀
+        float azimuth = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+
+        float sinA = Mathf.Sin(angle);
+        float cosA = Mathf.Cos(angle);
+
+        // 局部偏移向量 → 世界
+        Vector3 localOffset = (right * Mathf.Cos(azimuth) + up * Mathf.Sin(azimuth)) * sinA + dir * cosA;
+        return localOffset.normalized;
+    }
+
+    // ─── 扩散参数（子类配置可覆盖）───
+    protected virtual float GetMaxSpread() => _config.maxSpread;
+    protected virtual float GetSpreadPerShot() => _config.spreadPerShot;
+    protected virtual float GetSpreadRecoverySpeed() => 8f;
+
+    // ─── 后坐力参数（子类配置可覆盖，默认无后坐力）───
+    /// <param name="shotIndex">连发第 N 发（0 开始）</param>
+    protected virtual float GetVerticalRecoil(int shotIndex) => 0f;
+    protected virtual float GetHorizontalRecoilRandom() => 0f;
     /// <summary>
     /// 抽象方法：具体武器的射击子类实现
     /// </summary>

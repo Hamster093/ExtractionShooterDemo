@@ -7,7 +7,6 @@
 *****************************************************/
 
 using System;
-using System.Diagnostics.Tracing;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour 
@@ -18,6 +17,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private PlayerAnimatorDriver _animDriver;
     [SerializeField] public Rigidbody _rb;
     [SerializeField] private CharacterHealth _health;
+
+    [Header("移动平滑")]
+    [SerializeField] private float moveAcceleration = 12f;   // 加速平滑系数（越大越跟手）
+    [SerializeField] private float stopDeceleration = 8f;    // 停止减速平滑系数（越小停得越缓）
+
+    // 供状态机读取的平滑系数
+    public float MoveAcceleration => moveAcceleration;
+    public float StopDeceleration => stopDeceleration;
 
     private PlayerWeaponSlots _weaponSlots;  //武器栏位
     private WeaponBase _lastActiveWeapon;//最后激活的武器
@@ -263,6 +270,28 @@ public class PlayerController : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// 平滑逼近目标水平速度（指数平滑，帧率无关）。
+    /// 用于消除 50Hz 物理步进下"瞬时速度阶跃"导致的视觉顿挫：
+    /// 目标速度不再一帧到位，而是按系数指数逼近。
+    /// </summary>
+    /// <param name="targetVelocity">目标水平速度（忽略 y）</param>
+    /// <param name="deltaTime">步长时间</param>
+    /// <param name="acceleration">平滑系数，越大越跟手</param>
+    public void SmoothHorizontalVelocity(Vector3 targetVelocity, float deltaTime, float acceleration)
+    {
+        if (_rb == null) return;
+
+        Vector3 currentHorizontal = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+        Vector3 targetHorizontal = new Vector3(targetVelocity.x, 0f, targetVelocity.z);
+
+        // 指数平滑：t = 1 - exp(-a*dt)，与帧率无关
+        float t = 1f - Mathf.Exp(-acceleration * deltaTime);
+        Vector3 smoothed = Vector3.Lerp(currentHorizontal, targetHorizontal, t);
+
+        _rb.linearVelocity = new Vector3(smoothed.x, _rb.linearVelocity.y, smoothed.z);
+    }
+
     #region 输入事件处理
     /// <summary>
     /// 移动处理方法
@@ -433,6 +462,8 @@ public class PlayerController : MonoBehaviour
     private void HandleGameplayBlocked(bool blocked)
     {
         _isFireEnabled = !blocked; // blocked=true 时禁用开火
+        // 面板打开时暂停视角跟随，避免打开背包/战利品时人物还在转动
+        AimFollowEnabled(!blocked);
     }
     /// <summary>
     /// 死亡事件回调

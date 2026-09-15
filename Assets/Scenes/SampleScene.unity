@@ -870,7 +870,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 245533878}
-  - component: {fileID: 245533880}
   - component: {fileID: 245533882}
   - component: {fileID: 245533883}
   - component: {fileID: 245533884}
@@ -896,27 +895,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &245533880
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 245533877}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bee3ee82b98c61c42a08e2110322416d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  crosshair: {fileID: 1032731940}
-  weaponSprit1: {fileID: 1568936897}
-  weaponSprit2: {fileID: 314504586}
-  meleeWeapon: {fileID: 1028909978}
-  BackpackPanel: {fileID: 613530235}
-  LootPanel: {fileID: 386950468}
-  ammoText: {fileID: 1713705383}
-  ReserveAmmoText: {fileID: 1638210627}
-  backpackUI: {fileID: 0}
 --- !u!114 &245533882
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -955,6 +933,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _initialCapacity: 20
+  _warehouseCapacity: 60
 --- !u!1001 &252278167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6075,6 +6054,10 @@ MonoBehaviour:
   deadZone: 0.5
   smoothTime: 0.15
   maxSpeed: 20
+  cameraZOffset: 7
+  mouseInfluenceRadius: 5
+  mouseOffsetMultiplier: 0.3
+  mouseSmoothTime: 0.2
 --- !u!114 &963194230
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10563,6 +10546,17 @@ MonoBehaviour:
   - {fileID: 834104281}
   ammoText: {fileID: 1713705383}
   ReserveAmmoText: {fileID: 1638210627}
+--- !u!114 &1541815904 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5974726685219049189, guid: 4be261bfe23018b4189bfade93fed18c, type: 3}
+  m_PrefabInstance: {fileID: 3081138671653711353}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1552624261 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 170776073736611982, guid: 0ecec754ef1c63a40a86b445429dc9e2, type: 3}
@@ -12630,6 +12624,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1782246748
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1782246750}
+  - component: {fileID: 1782246749}
+  m_Layer: 0
+  m_Name: UIController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1782246749
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782246748}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bee3ee82b98c61c42a08e2110322416d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crosshair: {fileID: 1032731940}
+  weaponSprit1: {fileID: 1568936897}
+  weaponSprit2: {fileID: 314504586}
+  meleeWeapon: {fileID: 1028909978}
+  BackpackPanel: {fileID: 613530235}
+  LootPanel: {fileID: 386950468}
+  WarehousePanel: {fileID: 0}
+  ammoText: {fileID: 1713705383}
+  ReserveAmmoText: {fileID: 1638210627}
+  backpackUI: {fileID: 0}
+--- !u!4 &1782246750
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782246748}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1782999418
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13597,6 +13645,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chests: []
+  warehouseUI: {fileID: 0}
   visualController: {fileID: 1867057103}
 --- !u!114 &1867057103
 MonoBehaviour:
@@ -15942,6 +15991,10 @@ PrefabInstance:
       propertyPath: _lootPanel
       value: 
       objectReference: {fileID: 386950468}
+    - target: {fileID: 7892560161544386744, guid: 4be261bfe23018b4189bfade93fed18c, type: 3}
+      propertyPath: _interactButton
+      value: 
+      objectReference: {fileID: 1541815904}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -16168,6 +16221,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2027505544952699798, guid: 592a6028f58df3345a6834d72b8a3944, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2027505544952699798, guid: 592a6028f58df3345a6834d72b8a3944, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2027505544952699798, guid: 592a6028f58df3345a6834d72b8a3944, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2723287263852145955, guid: 592a6028f58df3345a6834d72b8a3944, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -16235,3 +16300,4 @@ SceneRoots:
   - {fileID: 2143411446}
   - {fileID: 3081138671653711353}
   - {fileID: 2968029849263474724}
+  - {fileID: 1782246750}
