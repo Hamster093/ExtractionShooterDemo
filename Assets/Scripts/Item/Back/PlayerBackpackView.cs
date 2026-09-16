@@ -95,7 +95,7 @@ public class PlayerBackpackView : MonoBehaviour
         if (icon != null)
         {
             // 有物品时加载对应图标资源，无物品时清空 Sprite
-            icon.sprite = hasItem ? ResourceManager.LoadUISprite(item.Data.iconKey) : null;
+            icon.sprite = hasItem ? ResourceManager.LoadUISpriteByIconKey(item.Data.iconKey) : null;
             // 有物品时图标不透明，无物品时完全透明
             icon.color = hasItem ? Color.white : new Color(1, 1, 1, 0);
         }

@@ -69,8 +69,10 @@ public class WeaponHUDPanel : BaseUIPanel
             return;
         }
 
-        //修改HUD图片显示
-        Sprite sprite = ResourceManager.LoadUISprite(weapon.Config.weaponName);
+        //修改HUD图片显示（按 iconKey 加载；未配置 iconKey 则清空图标）
+        Sprite sprite = string.IsNullOrEmpty(weapon.Config.iconKey)
+            ? null
+            : ResourceManager.LoadUISpriteByIconKey(weapon.Config.iconKey);
         images[slotIndex].sprite = sprite;       
         c.a = 1f;
         images[slotIndex].color = c;

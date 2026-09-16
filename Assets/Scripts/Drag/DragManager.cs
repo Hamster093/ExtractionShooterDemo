@@ -183,7 +183,7 @@ public class DragManager : MonoBehaviour
         if (item == null || item.amount <= 0) return;
 
         // 根据物品的 iconKey加载图标 Sprite
-        Sprite icon = ResourceManager.LoadUISprite(item.Data.iconKey); ; 
+        Sprite icon = ResourceManager.LoadUISpriteByIconKey(item.Data.iconKey); 
         if (icon == null)
         {
             Debug.LogWarning($"图标未找到: UI/{item.Data.iconKey}");

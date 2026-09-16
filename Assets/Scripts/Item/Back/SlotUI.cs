@@ -28,7 +28,7 @@ public class SlotUI : MonoBehaviour
         // 图标
         if (Icon != null)
         {
-            Icon.sprite = hasItem ? ResourceManager.LoadUISprite(item.Data.iconKey) : null;
+            Icon.sprite = hasItem ? ResourceManager.LoadUISpriteByIconKey(item.Data.iconKey) : null;
             Icon.color = hasItem ? Color.white : new Color(1, 1, 1, 0);
         }
 

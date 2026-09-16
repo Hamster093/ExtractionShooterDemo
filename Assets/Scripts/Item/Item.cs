@@ -40,11 +40,16 @@ public enum ItemType
     None,
     Consumable,   // 消耗品（鸡腿、药水）
     Equipment,    // 装备（手枪、步枪）
+    MeleeWeapon,    // 近战武器（刀、斧）
+    Headset,         //耳机
     Helmet,       //头盔
-    Chest,        //护甲
+    Body,        //护甲
     Backpack,     //背包
     Ammo,         // 弹药
-    Material      // 材料/任务道具
+    Material,      // 材料/任务道具
+    Face,         //面部
+    Accessory,     //饰品
+
 }
 
 /// <summary>

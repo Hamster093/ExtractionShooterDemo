@@ -75,8 +75,21 @@ public class PlayerController : MonoBehaviour
     }
     private void Start()
     {
+        // 跨场景恢复：血量由 CharacterHealth.Start 消费 PlayerStateData；
+        // 装备栏/武器/弹匣/激活栏位在此恢复（先恢复再初始化当前武器）
+        PlayerStateData.RestoreEquipment(this);
+
         InitializeWeapon(CurrentWeapon);
     }
+
+    /// <summary>当前血量（供跨场景保存；无血量组件返回 -1）</summary>
+    public int CurrentHealth => _health != null ? _health.CurrentHealth : -1;
+
+    /// <summary>当前激活的武器栏位索引</summary>
+    public int ActiveSlotIndex => _weaponSlots != null ? _weaponSlots.ActiveSlotIndex : 0;
+
+    /// <summary>获取指定栏位的武器实例（跨场景保存弹匣用）</summary>
+    public WeaponBase GetWeaponAt(int slotIndex) => _weaponSlots != null ? _weaponSlots.GetWeapon(slotIndex) : null;
 
     /// <summary>
     /// 装备武器到指定栏位

@@ -14,6 +14,8 @@ public enum FireMode { SemiAuto, FullAuto }//半自动/全自动
 public class WeaponConfig :ScriptableObject 
 {
     public string weaponName = "New Weapon";
+    [Tooltip("武器图标 iconKey（对应 Assets/Resources/UI/ 下的图标资源，如 icon_ak47；留空则 HUD 不显示图标）")]
+    public string iconKey = "";
     [Header("基础属性")]
     public int maxAmmo = 30;            // 弹匣容量
     public float reloadTime = 1.5f;     // 换弹时间

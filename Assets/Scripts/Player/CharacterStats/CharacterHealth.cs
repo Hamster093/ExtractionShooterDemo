@@ -49,8 +49,9 @@ public class CharacterHealth : MonoBehaviour, IDamageable
 
     private void Start()
     {
-        // 满血初始化
-        CurrentHealth = _stats.MaxHealth;
+        // 满血初始化；跨场景进入时恢复为 PlayerStateData 保存的血量（ConsumeHealth 返回 -1 表示无存档/已消费）
+        int restored = PlayerStateData.ConsumeHealth();
+        CurrentHealth = restored >= 0 ? restored : _stats.MaxHealth;
     }
 
     private void OnEnable()

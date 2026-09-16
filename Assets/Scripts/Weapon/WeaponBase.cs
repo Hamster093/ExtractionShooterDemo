@@ -41,6 +41,17 @@ public abstract class WeaponBase : MonoBehaviour
     public int MaxAmmo => _config.maxAmmo;
     public bool IsReloading => _isReloading;
 
+    /// <summary>
+    /// 恢复弹匣弹药（跨场景恢复用）。
+    /// Initialize 默认满弹，切场景重建武器后由 PlayerStateData 覆盖为保存时的余量。
+    /// </summary>
+    /// <param name="ammo">要恢复的弹药数（自动钳制到 [0, 弹匣容量]）</param>
+    public void RestoreAmmo(int ammo)
+    {
+        _currentAmmo = Mathf.Clamp(ammo, 0, MaxAmmo);
+        OnAmmoChanged?.Invoke(_currentAmmo, MaxAmmo);
+    }
+
     //─── 引用 ───
     protected PlayerAnimatorDriver _animDriver;
     protected GameObject _owner;

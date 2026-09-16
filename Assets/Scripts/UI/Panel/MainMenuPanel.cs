@@ -81,7 +81,7 @@ public class MainMenuPanel : MonoBehaviour
     }
 
     /// <summary>
-    /// 开始/继续游戏按钮点击回调：按名称加载游戏场景
+    /// 开始/继续游戏按钮点击回调：按名称加载游戏场景（新游戏：清空玩家跨场景状态）
     /// </summary>
     public void OnStartGameClicked()
     {
@@ -91,7 +91,7 @@ public class MainMenuPanel : MonoBehaviour
             return;
         }
         Debug.Log($"[MainMenuPanel] 加载游戏场景：{gameSceneName}");
-        SceneManager.LoadScene(gameSceneName);
+        SceneLoader.StartNewGame(gameSceneName);
     }
 
     /// <summary>

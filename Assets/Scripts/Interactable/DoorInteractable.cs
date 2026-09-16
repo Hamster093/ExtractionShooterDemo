@@ -1,13 +1,12 @@
 /****************************************************
-    文件：NewMonoBehaviourScript.cs
+    文件：DoorInteractable.cs
 	作者：DADI
     邮箱: 1581507659@qq.com
-    日期：#DATE#
-	功能：Nothing
+    日期：2026-09-16
+	功能：门交互（靠近显示 F 提示，按 F 切换场景；经 SceneLoader 保存玩家状态）
 *****************************************************/
 
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class DoorInteractable : InteractableBase
 {
@@ -27,6 +26,7 @@ public class DoorInteractable : InteractableBase
             return;
         }
         Debug.Log($"[MainMenuPanel] 加载游戏场景：{gameSceneName}");
-        SceneManager.LoadScene(gameSceneName);
+        // 经 SceneLoader 切换：先保存玩家状态（血量/装备/弹药），新场景 Player 生成后自动恢复
+        SceneLoader.LoadSceneWithPlayerState(gameSceneName);
     }
 }

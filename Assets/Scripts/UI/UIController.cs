@@ -20,6 +20,7 @@ public enum UIPriority
     Backpack = 10, // 背包
     Loot = 20,     // 战利品
     Warehouse = 25,// 仓库
+    VendingMachine = 26, // 售货机
     Shop = 30,     // 商店
     Dialog = 40,   // 对话框
     Pause = 100,    // 暂停菜单
@@ -44,6 +45,7 @@ public class UIController : MonoBehaviour
     [SerializeField] private BackpackPanel BackpackPanel; // 背包面板
     [SerializeField] private LootPanel LootPanel; // 战利品面板
     [SerializeField] private WarehousePanel WarehousePanel; // 仓库面板
+    [SerializeField] private VendingMachinePanel VendingMachinePanel; // 售货机面板
 
     [Header("弹药UI设置")]
     [SerializeField] private Text ammoText; // 弹药文本
@@ -223,6 +225,24 @@ public class UIController : MonoBehaviour
         else
         {
             OpenPanel(WarehousePanel);
+        }
+    }
+
+    /// <summary>
+    /// 打开/关闭售货机面板（由 VendingMachineInteractable 按 F 触发；独立开关，不联动其他面板）
+    /// </summary>
+    public void OpenVendingMachine()
+    {
+        if (VendingMachinePanel == null) { Debug.LogError("[UIController] 未绑定 VendingMachinePanel"); return; }
+
+        bool isOpen = _panelStack.Any(panel => panel.Priority == UIPriority.VendingMachine);
+        if (isOpen)
+        {
+            ClosePanel(VendingMachinePanel);
+        }
+        else
+        {
+            OpenPanel(VendingMachinePanel);
         }
     }
 

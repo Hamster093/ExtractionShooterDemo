@@ -344,31 +344,138 @@ public class DBMsg
     }
 
     /// <summary>
-    /// 保存玩家背包+仓库物品到数据库（预留扩展点）
-    /// 数据来源：GameService.Backpack.ExportToSaveList() / GameService.Warehouse.ExportToSaveList()
+    /// 保存玩家完整存档到数据库（方案A：单表 JSON 字段，表结构见 chundang/duck_inventory.sql）。
+    /// 背包/仓库/装备栏用 JsonUtility 序列化为 JSON 文本列；血量/激活栏位/弹匣/场景名存独立列。
+    /// 重复保存按 player_id 覆盖（upsert）。
     /// </summary>
     /// <param name="playerId">玩家ID（duck.id）</param>
-    /// <param name="backpackSlots">背包物品列表（ItemSlotSaveData：slotIndex/itemID/amount）</param>
+    /// <param name="backpackSlots">背包物品列表（ItemSlotSaveData：slotIndex/itemID/amount，只含非空格子）</param>
     /// <param name="warehouseSlots">仓库物品列表</param>
-    public void SaveInventory(int playerId, System.Collections.Generic.List<ItemSlotSaveData> backpackSlots, System.Collections.Generic.List<ItemSlotSaveData> warehouseSlots)
+    /// <param name="equipmentSlots">装备栏物品列表（0=主武器/1=副武器/2=近战）</param>
+    /// <param name="health">血量（-1=未保存）</param>
+    /// <param name="activeSlot">激活武器栏位</param>
+    /// <param name="magAmmo">每栏位弹匣弹药（int[3]，null 表示无武器）</param>
+    /// <param name="sceneName">存档时所在场景名</param>
+    public void SaveInventory(int playerId,
+        System.Collections.Generic.List<ItemSlotSaveData> backpackSlots,
+        System.Collections.Generic.List<ItemSlotSaveData> warehouseSlots,
+        System.Collections.Generic.List<ItemSlotSaveData> equipmentSlots,
+        int health, int activeSlot, int[] magAmmo, string sceneName)
     {
-        // TODO 2026-09-14：建物品存档表（如 duck_inventory：player_id + 背包/仓库 JSON 或逐行存）
-        // 建议：一张表存 player_id、inventory_type(0=背包 1=仓库)、slot_index、item_id、amount
-        // 或两列 JSON 文本列（backpack_data / warehouse_data），用 JsonUtility.ToJson(List<ItemSlotSaveData>)
-        // 调用时机：玩家退出/切换场景/定时保存时调用
-        Debug.Log($"[DBMsg] SaveInventory 尚未实现（预留扩展点）：playerId={playerId}, " +
-                  $"backpack={backpackSlots?.Count ?? 0} 条, warehouse={warehouseSlots?.Count ?? 0} 条");
+        try
+        {
+            string sql = @"INSERT INTO duck_inventory
+                (player_id, backpack_json, warehouse_json, equipment_json, health, active_slot, mag_ammo_json, scene_name)
+                VALUES (@player_id, @backpack, @warehouse, @equipment, @health, @active_slot, @mag_ammo, @scene_name)
+                ON DUPLICATE KEY UPDATE
+                backpack_json = @backpack, warehouse_json = @warehouse, equipment_json = @equipment,
+                health = @health, active_slot = @active_slot, mag_ammo_json = @mag_ammo, scene_name = @scene_name";
+
+            using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@player_id", playerId);
+                cmd.Parameters.AddWithValue("@backpack", ToJsonList(backpackSlots));
+                cmd.Parameters.AddWithValue("@warehouse", ToJsonList(warehouseSlots));
+                cmd.Parameters.AddWithValue("@equipment", ToJsonList(equipmentSlots));
+                cmd.Parameters.AddWithValue("@health", health);
+                cmd.Parameters.AddWithValue("@active_slot", activeSlot);
+                cmd.Parameters.AddWithValue("@mag_ammo", magAmmo != null ? JsonUtility.ToJson(magAmmo) : "");
+                cmd.Parameters.AddWithValue("@scene_name", sceneName ?? "");
+
+                cmd.ExecuteNonQuery();
+            }
+
+            Debug.Log($"[DBMsg] 存档成功：playerId={playerId}, backpack={backpackSlots?.Count ?? 0} 条, " +
+                      $"warehouse={warehouseSlots?.Count ?? 0} 条, equipment={equipmentSlots?.Count ?? 0} 条, HP={health}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("SaveInventory Error: " + e.Message);
+        }
     }
 
     /// <summary>
-    /// 按玩家ID加载背包+仓库物品（预留扩展点）
-    /// 返回两个列表；调用方用 GameService.Backpack.LoadFromSaveList(...) / Warehouse.LoadFromSaveList(...) 恢复
+    /// 按玩家ID加载完整存档（方案A）。无存档返回 null。
+    /// 调用方：SaveGameService.LoadGame → 背包/仓库 LoadFromSaveList + PlayerStateData.Import
     /// </summary>
-    public (System.Collections.Generic.List<ItemSlotSaveData> backpack, System.Collections.Generic.List<ItemSlotSaveData> warehouse) LoadInventory(int playerId)
+    public InventorySaveData LoadInventory(int playerId)
     {
-        // TODO 2026-09-14：实现读档 SQL，与 SaveInventory 对应
-        Debug.Log($"[DBMsg] LoadInventory 尚未实现（预留扩展点）：playerId={playerId}");
-        return (null, null);
+        InventorySaveData data = null;
+
+        try
+        {
+            string sql = "select * from duck_inventory where player_id = @player_id";
+
+            using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@player_id", playerId);
+
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        data = new InventorySaveData
+                        {
+                            backpack = FromJsonList(reader["backpack_json"]),
+                            warehouse = FromJsonList(reader["warehouse_json"]),
+                            equipment = FromJsonList(reader["equipment_json"]),
+                            health = reader["health"] is DBNull ? -1 : Convert.ToInt32(reader["health"]),
+                            activeSlot = reader["active_slot"] is DBNull ? 0 : Convert.ToInt32(reader["active_slot"]),
+                            magAmmo = ParseMagAmmo(reader["mag_ammo"]),
+                            sceneName = reader["scene_name"] is DBNull ? "" : reader["scene_name"].ToString()
+                        };
+                    }
+                }
+            }
+
+            if (data == null)
+                Debug.Log($"[DBMsg] 玩家 {playerId} 无存档记录");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("LoadInventory Error: " + e.Message);
+            return null;
+        }
+
+        return data;
+    }
+
+    // ---- 存档序列化辅助 ----
+
+    /// <summary>List&lt;ItemSlotSaveData&gt; → JSON（JsonUtility 需包装类）</summary>
+    private static string ToJsonList(System.Collections.Generic.List<ItemSlotSaveData> list)
+    {
+        if (list == null || list.Count == 0) return "";
+        return JsonUtility.ToJson(new ItemSlotSaveListWrapper { items = list });
+    }
+
+    /// <summary>JSON → List&lt;ItemSlotSaveData&gt;（空/非法返回空列表）</summary>
+    private static System.Collections.Generic.List<ItemSlotSaveData> FromJsonList(object jsonValue)
+    {
+        if (jsonValue is DBNull || jsonValue == null) return new System.Collections.Generic.List<ItemSlotSaveData>();
+        string json = jsonValue.ToString();
+        if (string.IsNullOrEmpty(json)) return new System.Collections.Generic.List<ItemSlotSaveData>();
+
+        var wrapper = JsonUtility.FromJson<ItemSlotSaveListWrapper>(json);
+        return wrapper != null && wrapper.items != null ? wrapper.items : new System.Collections.Generic.List<ItemSlotSaveData>();
+    }
+
+    /// <summary>弹匣 JSON → int[3]（空/非法返回 null）</summary>
+    private static int[] ParseMagAmmo(object jsonValue)
+    {
+        if (jsonValue is DBNull || jsonValue == null) return null;
+        string json = jsonValue.ToString();
+        if (string.IsNullOrEmpty(json)) return null;
+
+        try
+        {
+            return JsonUtility.FromJson<int[]>(json);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"ParseMagAmmo Error: {e.Message}");
+            return null;
+        }
     }
 
     /// <summary>

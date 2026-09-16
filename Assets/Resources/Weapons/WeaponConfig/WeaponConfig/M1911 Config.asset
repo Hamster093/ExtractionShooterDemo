@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: M1911 Config
   m_EditorClassIdentifier: 
   weaponName: M1911
+  iconKey: icon_pistol
   maxAmmo: 11
   reloadTime: 1.5
   damage: 6

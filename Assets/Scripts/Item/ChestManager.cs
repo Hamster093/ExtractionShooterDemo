@@ -35,6 +35,16 @@ public class ChestManager : MonoBehaviour,ISlotOwner
     }
 
     /// <summary>
+    /// 面板每次激活时全量刷新格子（如切场景恢复后、打开背包时），
+    /// 兜底 RestoreEquipment 等"Awake 前写数据"的时序问题。
+    /// </summary>
+    private void OnEnable()
+    {
+        if (_container != null && slots != null && slots.Count > 0)
+            RefreshUI();
+    }
+
+    /// <summary>
     /// 把一个外部容器绑定到本 UI，会替换旧容器并刷新全部格子。
     /// 同一个容器重复绑定只做刷新，不会重复订阅。
     /// </summary>

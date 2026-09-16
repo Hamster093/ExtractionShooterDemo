@@ -1,7 +1,15 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Items>
-  <Item id="1" itemName="默认弹药" maxStack="90" iconKey="icon_ammo_default" type="Ammo" />
-  <Item id="2" itemName="手枪" maxStack="1" iconKey="icon_pistol" type="Equipment" />
-  <Item id="3" itemName="鸡腿" maxStack="5" iconKey="icon_chicken" type="Consumable" />
-  <Item id="4" itemName="AK47" maxStack="1" iconKey="icon_ak47" type="Equipment" />
+	<Item id="1" itemName="默认弹药" maxStack="90" iconKey="icon_ammo_default" type="Ammo" />
+	<Item id="2" itemName="手枪" maxStack="1" iconKey="icon_pistol" type="Equipment" />
+	<Item id="3" itemName="鸡腿" maxStack="5" iconKey="icon_chicken" type="Consumable" />
+	<Item id="4" itemName="AK47" maxStack="1" iconKey="icon_ak47" type="Equipment" />
+	<Item id="5" itemName="耳机" maxStack="1" iconKey="icon_headset" type="Headset" />
+	<Item id="6" itemName="防弹衣" maxStack="1" iconKey="icon_body_armor" type="Body" />
+	<Item id="7" itemName="急救箱" maxStack="1" iconKey="icon_first_aid_kit" type="Consumable" />
+	<Item id="8" itemName="可可奶" maxStack="2" iconKey="icon_cocoa_milk" type="Consumable" />
+	<Item id="9" itemName="老钢盔" maxStack="1" iconKey="icon_steel_helmet" type="Helmet" />
+	<Item id="10" itemName="止血绷带" maxStack="1" iconKey="icon_bandage" type="Consumable" />
+	<Item id="11" itemName="装饰包" maxStack="1" iconKey="icon_backpack" type="Backpack" />
+	<Item id="12" itemName="穿甲弹" maxStack="90" iconKey="icon_ap_ammo" type="Ammo" />
 </Items>

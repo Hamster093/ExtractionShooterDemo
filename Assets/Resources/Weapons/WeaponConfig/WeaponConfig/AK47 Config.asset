@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: AK47 Config
   m_EditorClassIdentifier: 
   weaponName: AK47
+  iconKey: icon_ak47
   maxAmmo: 30
   reloadTime: 1.5
   damage: 10
@@ -20,25 +21,25 @@ MonoBehaviour:
   fireMode: 1
   DefaultAmmo: 1
   initialReserveAmmo: 90
-  maxSpread: 3
-  spreadPerShot: 0.5
+  maxSpread: 7
+  spreadPerShot: 2
   verticalRecoilCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0.5
+      value: 0
       inSlope: 0
-      outSlope: 0.05
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 30
-      value: 2
-      inSlope: 0.05
-      outSlope: 0
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
