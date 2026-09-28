@@ -103,6 +103,14 @@ public class BackpackUI : MonoBehaviour, ISlotOwner
         RebuildSlots(backpack.SlotCount);
         _isBound = true;
 
+        // 格子数必须与容器容量一致，否则多出来的格子没有数据槽位（拖入的物品会被静默丢弃）
+        if (_slotImages.Count != backpack.SlotCount)
+        {
+            Debug.LogWarning($"[BackpackUI] 背包格子数({_slotImages.Count})与容器容量({backpack.SlotCount})不一致，" +
+                             "多出的格子没有数据槽位（拖入物品会被丢弃）。请让 InventoryService.BackpackCapacity " +
+                             "与背包界面格子数量保持一致。");
+        }
+
         // 绑定成功后全量刷新一次，保证面板打开时显示最新数据
         RefreshUI();
 

@@ -11,14 +11,17 @@ using UnityEngine;
 public class EnemyAttackState : EnemyBaseState
 {
     private float _waitTimer;        // ⬅️ 停留计时器
-    public float WAIT_DURATION = 1f; // ⬅️ 停留时长
+    public float WAIT_DURATION = 1.5f; // ⬅️ 停留时长
+
+    public EnemyAttackState(EnemyController enemy, EnemyStateMachine machine) : base(enemy, machine)
+    {
+    }
 
     public override void Enter()
     {
         base.Enter();
-
         _waitTimer = WAIT_DURATION;
-        _enemy.ShootAtPlayer();
+        _enemy.ShootAtPlayer(3);
     }
 
     public override void Exit()
@@ -38,7 +41,7 @@ public class EnemyAttackState : EnemyBaseState
         }
         else
         {
-            _enemy.ChangeState(EnemyState.Idle);  // 玩家跑了 → 回到待机
+            _enemy.ChangeState(EnemyState.Chase);  // 玩家跑了 → 回到待机
         }
 
     }

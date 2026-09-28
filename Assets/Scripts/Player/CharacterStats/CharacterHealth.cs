@@ -40,6 +40,11 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     /// 血量变化事件（治疗也触发）：(当前血量, 最大血量)
     /// </summary>
     public event Action<int, int> OnHealthChanged;
+    /// <summary>
+    /// 被攻击事件：参数是攻击者（可能为 null，比如环境伤害）
+    /// 供 AI 感知"谁打了我、在哪"使用
+    /// </summary>
+    public event Action<GameObject> OnHitByAttacker;
 
     private void Awake()
     {
@@ -89,6 +94,9 @@ public class CharacterHealth : MonoBehaviour, IDamageable
 
         // 触发受伤事件 → 飘字、受击特效、UI刷新 等
         OnDamaged?.Invoke(CurrentHealth, _stats.MaxHealth, actualDamage);
+
+        // AI 感知用的受伤事件 EnemyController 订阅
+        OnHitByAttacker?.Invoke(attacker);
 
         // 判断死亡
         if (CurrentHealth <= 0)

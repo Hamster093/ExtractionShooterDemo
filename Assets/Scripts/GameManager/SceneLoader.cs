@@ -38,12 +38,13 @@ public static class SceneLoader
     }
 
     /// <summary>
-    /// 开始新游戏：清空玩家跨场景状态后加载场景（主菜单使用）
+    /// 进入游戏场景（主菜单"开始/继续游戏"使用）。
+    /// 注意：这里【不能】清空 PlayerStateData——登录成功后 LoadGame 已把读档数据暂存进去，
+    /// 进场景后 PlayerController.Start 的 ApplyLoadedInventory 需要读取。清空动作在登录成功时由 LoginPanel 完成。
     /// </summary>
     /// <param name="sceneName">目标场景名称（须已加入 Build Settings）</param>
     public static void StartNewGame(string sceneName)
     {
-        PlayerStateData.Clear();
         SceneManager.LoadScene(sceneName);
     }
 }

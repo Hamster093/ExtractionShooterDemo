@@ -75,6 +75,9 @@ public class PlayerController : MonoBehaviour
     }
     private void Start()
     {
+        // 数据库读档：主菜单登录时暂存的背包/仓库在此灌入常驻容器（InventoryService 已 Awake 就绪）
+        PlayerStateData.ApplyLoadedInventory();
+
         // 跨场景恢复：血量由 CharacterHealth.Start 消费 PlayerStateData；
         // 装备栏/武器/弹匣/激活栏位在此恢复（先恢复再初始化当前武器）
         PlayerStateData.RestoreEquipment(this);
@@ -425,8 +428,11 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            //todo 触发物品栏3-8
-            Debug.Log($"使用物品栏 {slotIndex}号位置的物品");
+            // 物品栏 3~8 → 快捷栏第 1~6 格：使用绑定的消耗品
+            // 面板打开（背包/仓库/战利品等需要鼠标的面板）时禁止使用，避免整理背包误消耗
+            if (!_isFireEnabled) return;
+
+            HotbarService.TryUseByKey(slotIndex);
         }
     }
     /// <summary>

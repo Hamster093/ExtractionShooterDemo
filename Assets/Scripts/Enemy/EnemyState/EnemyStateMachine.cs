@@ -15,7 +15,7 @@ public class EnemyStateMachine
     public void ChangeState(EnemyBaseState newState)
     {
         if (CurrentState == newState) return; // 防止重复切换到同一状态
-
+        Debug.Log($"[SM] {CurrentState?.GetType().Name} → {newState.GetType().Name}, 时间={Time.time:F2}");
         CurrentState?.Exit();
         CurrentState = newState;
         CurrentState?.Enter();

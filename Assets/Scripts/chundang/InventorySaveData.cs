@@ -3,7 +3,7 @@
 	作者：DADI
     邮箱: 1581507659@qq.com
     日期：2026-09-16
-	功能：存档数据结构（背包/仓库/装备栏 + 玩家状态，方案A：单表 JSON 字段）
+	功能：存档数据结构（背包/仓库/装备栏 + 玩家状态，单表 JSON 字段）
 *****************************************************/
 
 using System;
@@ -13,7 +13,7 @@ using System.Collections.Generic;
 /// 玩家完整存档数据（对应数据库表 duck_inventory 一行）。
 /// - backpack/warehouse/equipment：列表存储，只含非空格子 {slotIndex, itemID, amount}
 /// - health/activeSlot/magAmmo：玩家运行时状态（读档后经 PlayerStateData.Import 恢复）
-/// - sceneName：存档时所在场景，读档后用于跳转
+/// 不保存场景名：每次登录均进入 Concealment 场景。
 /// </summary>
 [Serializable]
 public class InventorySaveData
@@ -24,7 +24,6 @@ public class InventorySaveData
     public int health = -1;                                                   // 血量（-1=未保存，读档按满血）
     public int activeSlot = 0;                                                // 激活武器栏位
     public int[] magAmmo;                                                     // 每栏位弹匣弹药（null/越界按 -1=无武器处理）
-    public string sceneName = "";                                             // 存档场景名
 }
 
 /// <summary>
@@ -36,4 +35,13 @@ public class InventorySaveData
 public class ItemSlotSaveListWrapper
 {
     public List<ItemSlotSaveData> items = new List<ItemSlotSaveData>();
+}
+
+/// <summary>
+/// JsonUtility 数组包装：ToJson(int[]) 会输出 {"data":[...]}，反序列化需用本类
+/// </summary>
+[Serializable]
+public class IntArrayWrapper
+{
+    public int[] data;
 }

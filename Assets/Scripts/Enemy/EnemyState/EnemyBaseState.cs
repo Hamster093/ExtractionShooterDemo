@@ -15,13 +15,15 @@ public enum EnemyState
     Attack,
 }
 
-public class EnemyBaseState : MonoBehaviour , IState
+public class EnemyBaseState : IState
 {
     protected EnemyController _enemy;
+    protected readonly EnemyStateMachine _machine;
 
-    private void Awake()
+    protected EnemyBaseState(EnemyController enemy, EnemyStateMachine machine)
     {
-        _enemy = GetComponentInParent<EnemyController>();
+        _enemy = enemy;
+        _machine = machine;
     }
 
     /// <summary>

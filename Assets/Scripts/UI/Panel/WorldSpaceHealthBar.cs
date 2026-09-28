@@ -16,6 +16,7 @@ public class WorldSpaceHealthBar : MonoBehaviour
     public RectTransform healthBar; // 血条的RectTransform
     public Slider healthSlider;
     private CharacterHealth _characterHealth;
+    private bool _visible;
 
     [Header("参数")]
     public float barHeight = 1f; // 血条与角色的距离（沿相机屏幕上方方向）
@@ -39,8 +40,7 @@ public class WorldSpaceHealthBar : MonoBehaviour
             _characterHealth.OnHealthChanged += UpdateHealthUI;
 
             // 初始化时同步一次当前血量
-            UpdateHealthUI(_characterHealth.CurrentHealth,
-                           target.GetComponent<CharacterStats>().MaxHealth);
+            healthSlider.value = 1;
         }
     }
 
@@ -87,5 +87,15 @@ public class WorldSpaceHealthBar : MonoBehaviour
         Vector3 screenPos = Camera.main.WorldToScreenPoint(headPos);
         // 直接赋值给UI，UI永远朝向摄像机
         healthBar.position = screenPos;
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (_visible!= visible)
+        {
+            _visible = visible;
+            gameObject.SetActive(visible);
+        }
+
     }
 }

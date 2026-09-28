@@ -21,7 +21,6 @@ public class LootPanel : BaseUIPanel
 
     public override UIPriority Priority => UIPriority.Loot;
 
-    private ILootContainer _currentContainer;
 
     /// <summary>
     /// 设置容器
@@ -47,12 +46,10 @@ public class LootPanel : BaseUIPanel
 
     public void Open(ILootContainer container)
     {
-        _currentContainer = container;
     }
 
     public override void OnClose()
     {
-        _currentContainer = null;
         base.OnClose();
         //关闭背包
         if (backpackPanel != null && backpackPanel.gameObject.activeSelf)

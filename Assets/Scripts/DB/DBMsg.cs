@@ -344,7 +344,7 @@ public class DBMsg
     }
 
     /// <summary>
-    /// 保存玩家完整存档到数据库（方案A：单表 JSON 字段，表结构见 chundang/duck_inventory.sql）。
+    /// 保存玩家完整存档到数据库（单表 JSON 字段，表结构见。
     /// 背包/仓库/装备栏用 JsonUtility 序列化为 JSON 文本列；血量/激活栏位/弹匣/场景名存独立列。
     /// 重复保存按 player_id 覆盖（upsert）。
     /// </summary>
@@ -355,21 +355,20 @@ public class DBMsg
     /// <param name="health">血量（-1=未保存）</param>
     /// <param name="activeSlot">激活武器栏位</param>
     /// <param name="magAmmo">每栏位弹匣弹药（int[3]，null 表示无武器）</param>
-    /// <param name="sceneName">存档时所在场景名</param>
     public void SaveInventory(int playerId,
         System.Collections.Generic.List<ItemSlotSaveData> backpackSlots,
         System.Collections.Generic.List<ItemSlotSaveData> warehouseSlots,
         System.Collections.Generic.List<ItemSlotSaveData> equipmentSlots,
-        int health, int activeSlot, int[] magAmmo, string sceneName)
+        int health, int activeSlot, int[] magAmmo)
     {
         try
         {
             string sql = @"INSERT INTO duck_inventory
-                (player_id, backpack_json, warehouse_json, equipment_json, health, active_slot, mag_ammo_json, scene_name)
-                VALUES (@player_id, @backpack, @warehouse, @equipment, @health, @active_slot, @mag_ammo, @scene_name)
+                (player_id, backpack_json, warehouse_json, equipment_json, health, active_slot, mag_ammo_json)
+                VALUES (@player_id, @backpack, @warehouse, @equipment, @health, @active_slot, @mag_ammo)
                 ON DUPLICATE KEY UPDATE
                 backpack_json = @backpack, warehouse_json = @warehouse, equipment_json = @equipment,
-                health = @health, active_slot = @active_slot, mag_ammo_json = @mag_ammo, scene_name = @scene_name";
+                health = @health, active_slot = @active_slot, mag_ammo_json = @mag_ammo";
 
             using (MySqlCommand cmd = new MySqlCommand(sql, conn))
             {
@@ -379,8 +378,9 @@ public class DBMsg
                 cmd.Parameters.AddWithValue("@equipment", ToJsonList(equipmentSlots));
                 cmd.Parameters.AddWithValue("@health", health);
                 cmd.Parameters.AddWithValue("@active_slot", activeSlot);
-                cmd.Parameters.AddWithValue("@mag_ammo", magAmmo != null ? JsonUtility.ToJson(magAmmo) : "");
-                cmd.Parameters.AddWithValue("@scene_name", sceneName ?? "");
+                cmd.Parameters.AddWithValue("@mag_ammo", magAmmo != null
+                    ? JsonUtility.ToJson(new IntArrayWrapper { data = magAmmo }) // 裸数组 ToJson 会输出 {}，必须用包装类
+                    : "");
 
                 cmd.ExecuteNonQuery();
             }
@@ -395,7 +395,7 @@ public class DBMsg
     }
 
     /// <summary>
-    /// 按玩家ID加载完整存档（方案A）。无存档返回 null。
+    /// 按玩家ID加载完整存档）。无存档返回 null。
     /// 调用方：SaveGameService.LoadGame → 背包/仓库 LoadFromSaveList + PlayerStateData.Import
     /// </summary>
     public InventorySaveData LoadInventory(int playerId)
@@ -421,8 +421,7 @@ public class DBMsg
                             equipment = FromJsonList(reader["equipment_json"]),
                             health = reader["health"] is DBNull ? -1 : Convert.ToInt32(reader["health"]),
                             activeSlot = reader["active_slot"] is DBNull ? 0 : Convert.ToInt32(reader["active_slot"]),
-                            magAmmo = ParseMagAmmo(reader["mag_ammo"]),
-                            sceneName = reader["scene_name"] is DBNull ? "" : reader["scene_name"].ToString()
+                            magAmmo = ParseMagAmmo(reader["mag_ammo_json"])
                         };
                     }
                 }
@@ -442,14 +441,14 @@ public class DBMsg
 
     // ---- 存档序列化辅助 ----
 
-    /// <summary>List&lt;ItemSlotSaveData&gt; → JSON（JsonUtility 需包装类）</summary>
+    /// <summary>List&lt;ItemSlotSaveData; → JSON（JsonUtility 需包装类）</summary>
     private static string ToJsonList(System.Collections.Generic.List<ItemSlotSaveData> list)
     {
         if (list == null || list.Count == 0) return "";
         return JsonUtility.ToJson(new ItemSlotSaveListWrapper { items = list });
     }
 
-    /// <summary>JSON → List&lt;ItemSlotSaveData&gt;（空/非法返回空列表）</summary>
+    /// <summary>JSON → List&lt;ItemSlotSaveData;（空/非法返回空列表）</summary>
     private static System.Collections.Generic.List<ItemSlotSaveData> FromJsonList(object jsonValue)
     {
         if (jsonValue is DBNull || jsonValue == null) return new System.Collections.Generic.List<ItemSlotSaveData>();
@@ -460,7 +459,7 @@ public class DBMsg
         return wrapper != null && wrapper.items != null ? wrapper.items : new System.Collections.Generic.List<ItemSlotSaveData>();
     }
 
-    /// <summary>弹匣 JSON → int[3]（空/非法返回 null）</summary>
+    /// <summary>弹匣 JSON → int[3]（空/非法返回 null；JsonUtility 不支持裸数组，用包装类解析）</summary>
     private static int[] ParseMagAmmo(object jsonValue)
     {
         if (jsonValue is DBNull || jsonValue == null) return null;
@@ -469,7 +468,8 @@ public class DBMsg
 
         try
         {
-            return JsonUtility.FromJson<int[]>(json);
+            var wrapper = JsonUtility.FromJson<IntArrayWrapper>(json);
+            return wrapper != null ? wrapper.data : null;
         }
         catch (Exception e)
         {

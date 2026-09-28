@@ -19,9 +19,6 @@ public class EnemyLootData : MonoBehaviour
     [Tooltip("战利品拾取物预制体（挂有 LootPickup）")]
     [SerializeField] private GameObject _lootPickupPrefab;
 
-    [Tooltip("相对敌人位置的生成偏移")]
-    [SerializeField] private Vector3 _spawnOffset = new Vector3(0f, 0.5f, 0f);
-
     [SerializeField] private int _slotCount = 10;
 
     public IReadOnlyList<ChestSlotConfig> LootTable => _lootTable;
@@ -44,7 +41,7 @@ public class EnemyLootData : MonoBehaviour
         // 1. 生成容器
         var container = LootContainerFactory.Create(_lootTable, _slotCount);
         // 2. 生成拾取物
-        var go = Instantiate(_lootPickupPrefab, transform.position + _spawnOffset, Quaternion.identity);
+        var go = Instantiate(_lootPickupPrefab, new Vector3( transform.position.x,0.8f, transform.position.z), Quaternion.identity);
         go.GetComponent<LootPickup>()?.SetContainer(container);  
     }
 }

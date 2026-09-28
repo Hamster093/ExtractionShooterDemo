@@ -24,7 +24,8 @@ public enum UIPriority
     Shop = 30,     // 商店
     Dialog = 40,   // 对话框
     Pause = 100,    // 暂停菜单
-    HUD = 101       //弹药系统
+    HUD = 101,      //弹药系统
+    GameEnd = 105   // 撤离结算面板
 }
 
 /// <summary>
@@ -46,6 +47,7 @@ public class UIController : MonoBehaviour
     [SerializeField] private LootPanel LootPanel; // 战利品面板
     [SerializeField] private WarehousePanel WarehousePanel; // 仓库面板
     [SerializeField] private VendingMachinePanel VendingMachinePanel; // 售货机面板
+    [SerializeField] private ExtractionEndPanel ExtractionEndPanel; // 撤离结算面板
 
     [Header("弹药UI设置")]
     [SerializeField] private Text ammoText; // 弹药文本
@@ -244,6 +246,20 @@ public class UIController : MonoBehaviour
         {
             OpenPanel(VendingMachinePanel);
         }
+    }
+
+    /// <summary>
+    /// 打开撤离结算面板（由撤离点 ExtractionPoint 倒计时结束触发）
+    /// </summary>
+    public void OpenExtractionEnd()
+    {
+        if (ExtractionEndPanel == null)
+        {
+            Debug.LogError("[UIController] 未绑定 ExtractionEndPanel（请运行 Tools/撤离点/一键创建撤离点）");
+            return;
+        }
+
+        OpenPanel(ExtractionEndPanel);
     }
 
     /// <summary>

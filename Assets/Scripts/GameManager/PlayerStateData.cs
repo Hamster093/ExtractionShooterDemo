@@ -25,6 +25,10 @@ public static class PlayerStateData
     private static readonly int[] _magAmmo = new int[PlayerWeaponSlots.SlotCount];         // 弹匣弹药（-1=无武器）
     private static bool _hasSave = false;
 
+    // 登录读档时的背包/仓库暂存（主菜单场景无 InventoryService 容器，待进游戏场景后 ApplyLoadedInventory 灌入）
+    private static System.Collections.Generic.List<ItemSlotSaveData> _pendingBackpack;
+    private static System.Collections.Generic.List<ItemSlotSaveData> _pendingWarehouse;
+
     /// <summary>是否有已保存的玩家状态</summary>
     public static bool HasSave => _hasSave;
 
@@ -138,6 +142,8 @@ public static class PlayerStateData
             _equippedItemIds[i] = -1;
             _magAmmo[i] = -1;
         }
+        _pendingBackpack = null;
+        _pendingWarehouse = null;
         _hasSave = false;
     }
 
@@ -152,7 +158,8 @@ public static class PlayerStateData
     /// <summary>
     /// 从持久化存档导入玩家状态（数据库读档后调用，与 SaveGameService.LoadGame 配合）：
     /// 装备栏物品ID / 血量 / 弹匣 / 激活栏位 → 由 PlayerController.Start 的 RestoreEquipment
-    /// 与 CharacterHealth.Start 的 ConsumeHealth 在新场景自动恢复。
+    /// 与 CharacterHealth.Start 的 ConsumeHealth 在新场景自动恢复；
+    /// 背包/仓库先暂存（主菜单场景无 InventoryService 容器），进游戏场景后 ApplyLoadedInventory 灌入。
     /// </summary>
     public static void Import(InventorySaveData save)
     {
@@ -177,6 +184,43 @@ public static class PlayerStateData
                     _equippedItemIds[entry.slotIndex] = entry.itemID;
             }
         }
+
+        // 背包/仓库暂存（待 InventoryService 容器就绪后灌入）
+        _pendingBackpack = save.backpack;
+        _pendingWarehouse = save.warehouse;
+    }
+
+    /// <summary>
+    /// 将暂存的背包/仓库数据灌入常驻容器（InventoryService 就绪后调用，建议在 PlayerController.Start 之前/之中）。
+    /// 灌入完成后清空暂存。返回是否有待灌数据。
+    /// </summary>
+    public static bool ApplyLoadedInventory()
+    {
+        bool applied = false;
+
+        if (_pendingBackpack != null)
+        {
+            var backpack = GameService.Backpack;
+            if (backpack != null)
+            {
+                backpack.LoadFromSaveList(_pendingBackpack);
+                _pendingBackpack = null;
+                applied = true;
+            }
+        }
+
+        if (_pendingWarehouse != null)
+        {
+            var warehouse = GameService.Warehouse;
+            if (warehouse != null)
+            {
+                warehouse.LoadFromSaveList(_pendingWarehouse);
+                _pendingWarehouse = null;
+                applied = true;
+            }
+        }
+
+        return applied;
     }
 
     /// <summary>

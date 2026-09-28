@@ -28,6 +28,11 @@ public static class GameService
     public static WarehouseData Warehouse => InventoryService.Instance?.Warehouse;
 
     /// <summary>
+    /// 玩家快捷栏数据服务（6 格，存的是对背包物品实例的引用；跨场景保留、不进存档）
+    /// </summary>
+    public static HotbarData Hotbar => InventoryService.Instance?.Hotbar;
+
+    /// <summary>
     /// 登录成功后，由 LoginPanel 调用，初始化全局游戏数据
     /// </summary>
     public static void InitGame(PlayerData playerData)

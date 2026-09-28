@@ -13,7 +13,8 @@ using UnityEngine.UI;
 /// 账号登录/注册面板：
 /// 1. 登录按钮：校验账号密码（DBMsg.Login），失败弹出 Toast"账号或者密码不正确"
 /// 2. 注册按钮：DBMsg.Register 插入新账号，已存在弹 Toast"用户名已存在"，成功弹"注册成功"
-/// 3. 登录成功后调用 GameService.InitGame 初始化全局数据，并打开主菜单
+/// 3. 本地游玩按钮：跳过登录/注册直接进入游戏场景（不连接数据库、不实现存档）
+/// 4. 登录成功后调用 GameService.InitGame 初始化全局数据，并打开主菜单
 /// </summary>
 public class LoginPanel : MonoBehaviour
 {
@@ -24,9 +25,12 @@ public class LoginPanel : MonoBehaviour
     [Header("按钮")]
     [SerializeField] private Button loginButton;        // 登录按钮
     [SerializeField] private Button registerButton;     // 注册按钮
+    [SerializeField] private Button localPlayButton;    // 本地游玩按钮（跳过登录直接进游戏，不实现存档）
 
     [Header("跳转目标")]
     [SerializeField] private GameObject mainMenuPanel;  // 登录成功后的主菜单面板
+    [Tooltip("本地游玩直接进入的游戏场景名（须已加入 Build Settings）")]
+    [SerializeField] private string localPlaySceneName = "Concealment";
 
     /// <summary>
     /// 数据库是否已初始化（防止重复 Init 建立多个连接）
@@ -37,6 +41,7 @@ public class LoginPanel : MonoBehaviour
     {
         if (loginButton != null) loginButton.onClick.AddListener(OnLoginClicked);
         if (registerButton != null) registerButton.onClick.AddListener(OnRegisterClicked);
+        if (localPlayButton != null) localPlayButton.onClick.AddListener(OnLocalPlayClicked);
         if (passwordInput != null) passwordInput.contentType = InputField.ContentType.Password;
     }
 
@@ -109,16 +114,40 @@ public class LoginPanel : MonoBehaviour
     }
 
     /// <summary>
+    /// 本地游玩按钮点击回调：跳过登录/注册，直接进入游戏场景。
+    /// 不连接数据库、不设置 CurrentPlayer（存档按钮会提示"当前未登录，无法存档"），
+    /// 进入前清空上次会话残留的跨场景状态（PlayerStateData），保证全新开局。
+    /// </summary>
+    public void OnLocalPlayClicked()
+    {
+        if (string.IsNullOrEmpty(localPlaySceneName))
+        {
+            ToastManager.ShowMessage("未配置本地游玩场景名");
+            return;
+        }
+
+        // 清空上次会话残留的玩家状态（血量/装备栏/弹匣等），避免串档；
+        // 注意不能省：StartNewGame 本身不清（登录读档依赖它保留暂存数据）
+        PlayerStateData.Clear();
+
+        Debug.Log($"[LoginPanel] 本地游玩：直接进入场景 {localPlaySceneName}");
+        SceneLoader.StartNewGame(localPlaySceneName);
+    }
+
+    /// <summary>
     /// 登录成功后的扩展点（虚方法，可重写）。
-    /// TODO(扩展接口)：玩家的存档数据以后会写在数据库里，目前还没确定要读取哪些字段。
-    /// 未来在这里加载该玩家的存档（背包、武器、位置、血量等），例如：
-    ///     var saveData = SaveSystem.LoadPlayer(playerData.id);
-    /// 相关的字段读取也可在 DBMsg.Login 的 TOADD 处补充。
+    /// 登录成功后：初始化全局数据 → 从数据库读取该玩家存档（背包/仓库/装备栏/血量等）。
+    /// 只有"主菜单登录"会走到这里；直接从游戏场景（如 Concealment）Play 不会触发读档。
     /// </summary>
     protected virtual void OnLoginSuccess(PlayerData playerData)
     {
         // 初始化全局玩家数据（GameService 中已有 TODO：从数据库加载更多数据）
         GameService.InitGame(playerData);
+
+        // 先清空上次会话的跨场景状态（避免残留），再读档：
+        // LoadGame 会把读档数据暂存到 PlayerStateData，进游戏场景后由 PlayerController.Start 灌入容器
+        PlayerStateData.Clear();
+        SaveGameService.LoadGame(playerData.id);
 
         // 打开主菜单
         if (mainMenuPanel != null) mainMenuPanel.SetActive(true);

@@ -275,6 +275,7 @@ public class PlayerWeaponSlots
             SetWeapon(slotIndex, null);
             return;
         }
+        
 
         // 复用已登记的武器实例：同一物品在栏位之间挪动时不再新建武器
         if (!_itemWeapons.TryGetValue(item, out var weapon))
@@ -282,13 +283,14 @@ public class PlayerWeaponSlots
             weapon = WeaponFactory.CreateWeapon(item.itemID);
             if (weapon == null)
             {
-                Debug.LogWarning($"[PlayerWeaponSlots] 武器创建失败 itemID={item.itemID}");
+                Debug.LogWarning($"[PlayerWeaponSlots] 工厂对武器/装备实例创建失败 itemID={item.itemID}");
                 return;
             }
             _itemWeapons[item] = weapon;
         }
 
         // 装备到指定栏位
+        if (slotIndex<3)
         _playerController.PickupWeapon(weapon, slotIndex);
 
         RefreshWeaponVisibility();

@@ -3,13 +3,11 @@
 	作者：DADI
     邮箱: 1581507659@qq.com
     日期：2026-09-16
-	功能：存档服务（收集背包/仓库/装备栏/玩家状态 → 数据库；读档反向恢复）
-	方案A：单表 JSON 字段（见 duck_inventory.sql）
+	功能：存档服务（收集背包/仓库/装备栏/玩家状态 → 数据库；读档反向恢复）单表 JSON 字段（见 duck_inventory.sql）
 *****************************************************/
 
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 存档服务编排：
@@ -22,6 +20,7 @@ public static class SaveGameService
 {
     /// <summary>
     /// 保存当前玩家完整状态到数据库
+    /// 血量/激活栏位/弹匣直接从场景内 PlayerController 实时读取（不依赖 PlayerStateData 静态值）。
     /// </summary>
     /// <param name="playerId">玩家ID（duck.id，登录后 GameService.CurrentPlayer.id）</param>
     public static void SaveGame(int playerId)
@@ -34,17 +33,30 @@ public static class SaveGameService
             : new List<ItemSlotSaveData>();
         var equipment = ExportEquipment();
 
-        var (health, activeSlot, magAmmo) = PlayerStateData.Export();
-        string sceneName = SceneManager.GetActiveScene().name;
+        // 玩家状态实时获取（不在游戏场景/无 Player 时按默认值）
+        var player = Object.FindFirstObjectByType<PlayerController>();
+        int health = player != null ? player.CurrentHealth : -1;
+        int activeSlot = player != null ? player.ActiveSlotIndex : 0;
+        int[] magAmmo = null;
+        if (player != null)
+        {
+            magAmmo = new int[PlayerWeaponSlots.SlotCount];
+            for (int i = 0; i < magAmmo.Length; i++)
+            {
+                var w = player.GetWeaponAt(i);
+                magAmmo[i] = w != null ? w.CurrentAmmo : -1;
+            }
+        }
 
-        DBMsg.Instance.SaveInventory(playerId, backpack, warehouse, equipment, health, activeSlot, magAmmo, sceneName);
+        DBMsg.Instance.SaveInventory(playerId, backpack, warehouse, equipment, health, activeSlot, magAmmo);
         Debug.Log($"[SaveGameService] 已保存玩家 {playerId} 存档：背包 {backpack.Count} 条、仓库 {warehouse.Count} 条、" +
-                  $"装备栏 {equipment.Count} 条、HP={health}、场景={sceneName}");
+                  $"装备栏 {equipment.Count} 条、HP={health}、弹匣=[{(magAmmo != null ? string.Join(",", magAmmo) : "null")}]");
     }
 
     /// <summary>
-    /// 从数据库加载玩家存档并恢复到当前数据层。
-    /// 装备栏/血量/弹匣/激活栏位经 PlayerStateData.Import 注入，由场景内 Player 的 Start 自动恢复。
+    /// 从数据库加载玩家存档。
+    /// 主菜单场景（Login.unity）无 InventoryService 容器，这里只把数据暂存到 PlayerStateData（含背包/仓库），
+    /// 进游戏场景后由 PlayerController.Start 调 PlayerStateData.ApplyLoadedInventory() 灌入容器并恢复装备/血量。
     /// </summary>
     /// <param name="playerId">玩家ID</param>
     /// <returns>是否成功读档（无存档返回 false）</returns>
@@ -57,12 +69,10 @@ public static class SaveGameService
             return false;
         }
 
-        GameService.Backpack?.LoadFromSaveList(save.backpack);
-        GameService.Warehouse?.LoadFromSaveList(save.warehouse);
         PlayerStateData.Import(save);
 
         Debug.Log($"[SaveGameService] 已读取玩家 {playerId} 存档：背包 {save.backpack.Count} 条、仓库 {save.warehouse.Count} 条、" +
-                  $"装备栏 {save.equipment.Count} 条、HP={save.health}、场景={save.sceneName}");
+                  $"装备栏 {save.equipment.Count} 条、HP={save.health}");
         return true;
     }
 

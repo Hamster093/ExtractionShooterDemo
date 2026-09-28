@@ -23,6 +23,9 @@ public class DragManager : MonoBehaviour
     [Tooltip("仓库 UI（绑定 GameService.Warehouse），注册后支持背包↔仓库拖拽")]
     public WarehouseUI warehouseUI;
 
+    [Tooltip("快捷栏 UI（绑定 GameService.Hotbar），注册后支持「背包 → 快捷栏」的绑定拖拽（只记引用、不搬运物品）")]
+    public HotbarUI hotbarUI;
+
     // --- 拖拽状态变量 ---
     private bool isDragging = false;          // 当前是否处于拖拽状态
     private ISlotOwner sourceSlotOwner;       // 拖拽起始的宝箱
@@ -118,9 +121,31 @@ public class DragManager : MonoBehaviour
             }
             Debug.Log($"[DragManager] 仓库UI「{warehouseUI.gameObject.name}」注册格子 {warehouseBound} 个");
         }
-        else
-        {
 
+        // 快捷栏 UI：注册 6 格，使"背包 → 快捷栏"的绑定拖拽生效。
+        // 注意：快捷栏格用的是 HotbarBindSlotHandler（绑定语义：只记引用、不搬运物品）
+        if (hotbarUI == null)
+            hotbarUI = FindFirstObjectByType<HotbarUI>(FindObjectsInactive.Include);
+
+        if (hotbarUI != null)
+        {
+            var hotbarSlots = hotbarUI.Slots;
+            int hotbarBound = 0;
+            if (hotbarSlots != null)
+            {
+                for (int i = 0; i < hotbarSlots.Count; i++)
+                {
+                    var slot = hotbarSlots[i];
+                    if (slot == null) continue;
+
+                    ISlotDragHandler handler = slot.GetComponent<ISlotDragHandler>() ?? slot.gameObject.AddComponent<HotbarBindSlotHandler>();
+                    if (!_boundSlots.Add(slot)) continue;
+                    _slotInfo[slot] = (hotbarUI, i, handler);
+                    AddEventTriggersToSlot(slot);
+                    hotbarBound++;
+                }
+            }
+            Debug.Log($"[DragManager] 快捷栏UI「{hotbarUI.gameObject.name}」注册格子 {hotbarBound} 个");
         }
 
     }
@@ -262,6 +287,18 @@ public class DragManager : MonoBehaviour
         bool handled = sourceHandler.OnEndDrag(eventData, slot.Icon, sourceOwner, srcIdx,
                                                targetSlot != null ? targetSlot.Icon : null, targetInfo);
         if (handled) return;
+
+        // 目标格可接管本次放置（例：快捷栏格只建立绑定、不搬运物品）。
+        // 只有目标格实现了 ISlotDropReceiver 时才生效，不影响背包/仓库/装备栏的既有流程。
+        if (targetSlot != null)
+        {
+            var receiver = targetSlot.GetComponent<ISlotDropReceiver>();
+            if (receiver != null && receiver.TryReceiveDrop(sourceOwner.Container, srcIdx))
+            {
+                sourceOwner.RefreshSlot(srcIdx); // 源格物品未移动，刷新一下确保显示与数据一致
+                return;
+            }
+        }
 
         // 默认行为：尝试移动到目标槽位
         if (targetSlot != null && targetInfo.HasValue)

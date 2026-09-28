@@ -22,8 +22,16 @@ public class InventoryService : MonoBehaviour
     /// </summary>
     public WarehouseData Warehouse { get; private set; }
 
-    [Tooltip("玩家背包初始容量（格数），需与场景中背包面板格子数一致（当前为 30）")]
-    [SerializeField] private int _initialCapacity = 30;
+    /// <summary>
+    /// 玩家快捷栏数据（6 格）：存放的是对背包物品实例的【引用】，不是物品拥有权。
+    /// 随本服务 DontDestroyOnLoad 一起跨场景保留，但不进数据库存档（读档后自动失效并解绑）。
+    /// </summary>
+    public HotbarData Hotbar { get; private set; }
+
+    /// <summary>
+    /// 玩家背包容量（格数）：必须与场景中背包面板（PlayerBackpackPanel/Scroll View/Viewport/Content）的格子数一致（当前 30 格）。
+    /// </summary>
+    public const int BackpackCapacity = 30;
 
     [Tooltip("仓库初始容量（格数），需与场景中仓库面板格子数一致（当前为 60）")]
     [SerializeField] private int _warehouseCapacity = 60;
@@ -35,8 +43,9 @@ public class InventoryService : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         
         //数据初始化
-        PlayerBackpack = new BackpackData(_initialCapacity);
+        PlayerBackpack = new BackpackData(BackpackCapacity);
         Warehouse = new WarehouseData(_warehouseCapacity);
+        Hotbar = new HotbarData(HotbarService.SlotCount);
     }
 
 }
