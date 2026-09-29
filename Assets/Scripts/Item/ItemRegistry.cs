@@ -126,4 +126,17 @@ public static class ItemRegistry
     /// 安全获取，不报错，适合频繁调用场景
     /// </summary>
     public static bool TryGet(int id, out ItemData item) => _items.TryGetValue(id, out item);
+
+    public static List<ItemData> GetAllByTypes(IEnumerable<ItemType> types)
+    {
+        var set = new HashSet<ItemType>(types);
+        var result = new List<ItemData>();
+        foreach (var kv in _items)
+        {
+            var data = kv.Value;
+            if (data != null && set.Contains(data.type))   // 你 ItemData 上的字段名可能不同
+                result.Add(data);
+        }
+        return result;
+    }
 }

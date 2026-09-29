@@ -9,6 +9,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 /// <summary>
 /// 战利品拾取物
@@ -17,9 +18,13 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class LootPickup : InteractableBase
 {
+    [Header("销毁")]
+    [Tooltip("全部搜完后、面板关闭多久，箱子自动销毁（秒）。<=0 表示永不销毁")]
+    [SerializeField] private float _destroyDelay = 5f;
 
     private ItemContainer _container;
     private bool _dataSent = false;//是否已经发送数据到UI
+    private Coroutine _recycleRoutine;
 
 
     public void SetContainer(ItemContainer container)
@@ -40,5 +45,58 @@ public class LootPickup : InteractableBase
         {
             UIController.Instance.OpenLoot();
         }
+
+        // 告诉 LootPanel 当前打开的是哪个箱子，方便关闭时回调
+        LootPanel.SetCurrentPickup(this);
+
+        // 打开瞬间取消待销毁（防止玩家正在看的时候箱子没了）
+        CancelRecycle();
     }
+
+    public void OnPanelClosed()
+    {
+        if (_destroyDelay <= 0f) return;              // 未开启销毁
+        if (_container == null) return;
+        if (!_container.HasSearched) return;          // 没搜完，留着下次来搜
+        if (_recycleRoutine != null) return;          // 已在倒计时
+
+        _recycleRoutine = StartCoroutine(RecycleAfterDelay());
+    }
+
+    private void CancelRecycle()
+    {
+        if (_recycleRoutine != null)
+        {
+            StopCoroutine(_recycleRoutine);
+            _recycleRoutine = null;
+        }
+    }
+
+    private IEnumerator RecycleAfterDelay()
+    {
+        yield return new WaitForSeconds(_destroyDelay);
+        _recycleRoutine = null;
+
+        // 如果这期间又被打开，取消销毁（保险，虽然 OnInteract 已处理）
+        // 简易判断：如果 LootPanel 当前指向自己，说明还开着
+        if (LootPanel.CurrentPickup == this) yield break;
+
+        Destroy(gameObject);
+    }
+
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+        // 避免 LootPanel 持有已销毁的引用
+        LootPanel.ClearCurrentPickup(this);
+    }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        // 可选：在 Scene 里画个圈，方便看销毁范围
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.3f);
+        Gizmos.DrawWireSphere(transform.position, 1f);
+    }
+#endif
 }

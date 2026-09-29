@@ -13,15 +13,33 @@ using UnityEngine;
 public class ItemContainer : IItemContainer
 {
     private readonly List<ItemInstance> _slots;
+    private readonly bool[] _slotSearched;      // 每个格子是否已搜出
 
     public event Action<int> OnSlotChanged;
 
     public int SlotCount => _slots.Count;
+    /// <summary>
+    /// 整个容器是否已搜完（只统计"有物品"的格子，空格子不影响）
+    /// </summary>
+    public bool HasSearched
+    {
+        get
+        {
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var item = _slots[i];
+                if (item != null && item.amount > 0 && !_slotSearched[i])
+                    return false;
+            }
+            return true;
+        }
+    }
 
     //构造函数 初始化容器容量
     public ItemContainer(int capacity)
     {
         _slots = new List<ItemInstance>(new ItemInstance[capacity]);
+        _slotSearched = new bool[capacity];
     }
 
     /// <summary>
@@ -107,5 +125,25 @@ public class ItemContainer : IItemContainer
             _slots[i] = null;
             OnSlotChanged?.Invoke(i);
         }
+    }
+
+    // ==================== 搜索相关 ====================
+
+    /// <summary>该格是否已搜出</summary>
+    public bool IsSearched(int index) =>
+        index >= 0 && index < _slotSearched.Length && _slotSearched[index];
+
+    /// <summary>标记该格已搜出</summary>
+    public void MarkSearched(int index)
+    {
+        if (index >= 0 && index < _slotSearched.Length)
+            _slotSearched[index] = true;
+    }
+
+    /// <summary>重置所有格子的搜索状态</summary>
+    public void ResetSearched()
+    {
+        for (int i = 0; i < _slotSearched.Length; i++)
+            _slotSearched[i] = false;
     }
 }
