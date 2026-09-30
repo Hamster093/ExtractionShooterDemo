@@ -77,9 +77,13 @@ public class CharacterStats : MonoBehaviour
         int oldMax = MaxHealth;
         MaxHealth += value;
         OnMaxHealthChanged?.Invoke(MaxHealth, oldMax);
-        // ⚠️ 不再在这里 GetComponent<CharacterHealth>
-        // 由 CharacterHealth 自己订阅 OnMaxHealthChanged 来同步
     }
+    public void AddSprintSpeedMultiplier(float value) => SprintSpeedMultiplier *= (1 + value);
+    public void AddJumpForce(float value) => JumpForce += value;
+    public void AddGravity(float value) => Gravity += value;
+    public void AddRollSpeed(float value) => RollSpeed += value;
+    public void AddRollDuration(float value) => RollDuration += value;
+
 
     /// <summary>
     /// 计算实际受伤值 按护甲等级计算实际受伤值（离散阶梯减伤）

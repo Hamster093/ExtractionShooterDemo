@@ -3,7 +3,7 @@
 	作者：DADI
     邮箱: 1581507659@qq.com
     日期：2026-09-08 16:31:35
-	功能：角色血量管理，实现 IDamageable 接口对接子弹系统
+	功能：角色血量管理，实现 IDamageable 接口对接子弹系统(
 *****************************************************/
 
 using System;
@@ -83,17 +83,26 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     {
         if (IsDead) return;
 
-        // 通过属性系统计算护甲减伤后的实际伤害
-        int actualDamage = _stats.CalculateActualDamage(rawDamage);
+        //  构造伤害信息，走Buff系统加工
+        DamageInfo info = new DamageInfo
+        {
+            creator = attacker,
+            target = gameObject,
+            damage = rawDamage
+        };
+        if (DamageManager.Instance != null)
+            DamageManager.Instance.ProcessDamage(info);
+
+        DamageResult result = DamagePipeline.Calculate(info);
 
         // 扣血
-        CurrentHealth = Mathf.Clamp(CurrentHealth - actualDamage, 0, _stats.MaxHealth);
+        CurrentHealth = Mathf.Clamp(CurrentHealth - result.finalDamage, 0, _stats.MaxHealth);
 
-        Debug.Log($"[{gameObject.name}] 原始伤害:{rawDamage} → 实际伤害:{actualDamage}，" +
-                  $"剩余血量:{CurrentHealth}/{_stats.MaxHealth}");
+        Debug.Log($"[{gameObject.name}] 原始:{rawDamage} → 最终:{result.finalDamage}" +
+               (result.isCritical ? " [暴击]" : ""));
 
         // 触发受伤事件 → 飘字、受击特效、UI刷新 等
-        OnDamaged?.Invoke(CurrentHealth, _stats.MaxHealth, actualDamage);
+        OnDamaged?.Invoke(CurrentHealth, _stats.MaxHealth, result.finalDamage);
 
         // AI 感知用的受伤事件 EnemyController 订阅
         OnHitByAttacker?.Invoke(attacker);
@@ -101,7 +110,18 @@ public class CharacterHealth : MonoBehaviour, IDamageable
         // 判断死亡
         if (CurrentHealth <= 0)
         {
-            Die(attacker);
+            // 致命前回调：免死Buff可以在这里回血、把 info.damage 改成 0 等
+            if (DamageManager.Instance != null)
+                DamageManager.Instance.ProcessBekill(info);
+
+            //如果被免死Buff救回来了，就不死
+            if (CurrentHealth <= 0)
+            {
+                if (DamageManager.Instance != null)
+                    DamageManager.Instance.ProcessKill(info);
+
+                Die(attacker);
+            }
         }
     }
 
